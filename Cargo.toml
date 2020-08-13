@@ -1,0 +1,17 @@
+[package]
+name = "raycaster"
+version = "0.1.0"
+authors = ["Galizzi Guillermo <galizzi.guillermo@gmail.com>"]
+edition = "2018"
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.bevy]
+git = "https://github.com/bevyengine/bevy"
+
+[dependencies.sdl2]
+git = "https://github.com/rust-sdl2/rust-sdl2"
+
+default-features = false
+features = ["ttf", "image"]
