@@ -1,5 +1,5 @@
-use glam::vec2;
 use bevy::prelude::*;
+use glam::vec2;
 use sdl2::keyboard::Keycode;
 
 use crate::{Keypress, MouseMotion};
@@ -12,7 +12,7 @@ pub struct Position {
     pub y: f32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Direction {
     pub x: f32,
     pub y: f32,
@@ -35,6 +35,17 @@ impl std::ops::Mul<f32> for &Direction {
     }
 }
 
+impl std::ops::Neg for Direction {
+    type Output = Direction;
+
+    fn neg(self) -> Self::Output {
+        Direction {
+            x: -self.x,
+            y: -self.y,
+        }
+    }
+}
+
 impl std::ops::Add<Direction> for &Position {
     type Output = Position;
 
@@ -53,7 +64,7 @@ impl Position {
 
     pub fn move_towards(&self, dir: &Direction, dt: f32) -> Position {
         // TODO: Would be a component, or stat or something
-        let speed = 5000.0;
+        let speed = 120.0;
         self + dir * (dt * speed)
     }
 }
@@ -69,34 +80,55 @@ impl Plugin for GamePlugin {
 }
 
 fn spawn(mut commands: Commands) {
-    commands.spawn((Position::new(400., 250.), Player, Direction::new(1., 0.5)));
+    commands.spawn((Position::new(50., 50.), Player, Rotation::default()));
     println!("should spaned?");
 }
 
-fn movement(keypress: Res<Keypress>, time: Res<Time>, mut position: Mut<Position>, direction: &Direction) {
+fn movement(
+    keypress: Res<Keypress>,
+    time: Res<Time>,
+    mut position: Mut<Position>,
+    rotation: &Rotation,
+) {
+    let direction = rotation.direction();
     if keypress.is(Keycode::W) {
-        *position = position.move_towards(direction, time.delta_seconds);
+        *position = position.move_towards(&direction, time.delta_seconds);
+    }
+
+    if keypress.is(Keycode::S) {
+        *position = position.move_towards(&-direction, time.delta_seconds);
     }
 }
 
 #[derive(Default)]
-struct Rotation {
+pub struct Rotation {
     radians: f32,
     degrees: f32,
 }
 
-fn move_camera(mouse_motion: Res<MouseMotion>, mut rotation: Local<Rotation>, mut direction: Mut<Direction>) {
-    if mouse_motion.x == 0  {
+impl Rotation {
+    pub fn add(&mut self, degrees: f32) {
+        self.degrees += degrees;
+        if self.degrees >= 360.0 {
+            self.degrees = self.degrees - 360.0;
+        }
+
+        if self.degrees < 0.0 {
+            self.degrees += 360.0;
+        }
+    }
+
+    pub fn direction(&self) -> Direction {
+        let v = Vec2::new(self.radians.cos(), self.radians.sin()).normalize();
+        Direction::new(v.x(), v.y())
+    }
+}
+
+fn move_camera(mouse_motion: Res<MouseMotion>, mut rotation: Mut<Rotation>) {
+    if mouse_motion.x == 0 {
         return;
     }
     let to_rad = std::f64::consts::PI / 180.;
-    rotation.degrees += mouse_motion.x as f32;
+    rotation.add(mouse_motion.x as f32);
     rotation.radians = (rotation.degrees as f64 * to_rad) as f32;
-    
-    direction.x = rotation.radians.cos();
-    direction.y = rotation.radians.sin();
-
-    let v = Vec2::new(direction.x, direction.y).normalize();
-    direction.x = v.x();
-    direction.y = v.y();
 }

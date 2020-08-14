@@ -59,8 +59,16 @@ impl Keypress {
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_sub = sdl_context.video()?;
+
+    let resulting_resolution = (320, 200);
+    let actual_resolution = (960, 600);
+    let scale = (
+        actual_resolution.0 as f32 / resulting_resolution.0 as f32,
+        actual_resolution.1 as f32 / resulting_resolution.1 as f32,
+    );
+    let plane: (f32, f32) = (0., 0.66);
     let window = video_sub
-        .window("sdl2+bevy demo", 800, 600)
+        .window("sdl2+bevy demo", actual_resolution.0, actual_resolution.1)
         .position_centered()
         .opengl()
         .build()
@@ -75,7 +83,8 @@ fn main() -> Result<(), String> {
     canvas.set_draw_color((0, 0, 0));
     canvas.clear();
     canvas.present();
-    
+    canvas.set_scale(scale.0, scale.1)?;
+
     sdl_context.mouse().capture(true);
 
     let keypress = Keypress::new();
@@ -131,9 +140,124 @@ fn main() -> Result<(), String> {
             }
         }
 
-        canvas.set_draw_color((255, 0, 0));
-        for (position, _) in app.world.query::<(&Position, &Player)>().iter() {
+        canvas.set_draw_color((15, 15, 25));
+        canvas.clear();
+
+        let fov = 60.0;
+        let distance_to_plane = (resulting_resolution.0 / 2) / (fov / 2.0 as f64).tan() as i32;
+        let angle_between_rays = fov / resulting_resolution.0 as f64;
+        for (position, _, rotation) in app
+            .world
+            .query::<(&Position, &Player, &game_plugin::Rotation)>()
+            .iter()
+        {
+            for x in 0..resulting_resolution.0 {
+                let camera_x = 2.0 * x as f32 / (resulting_resolution.0 as f32) - 1.0;
+                /*let ray_direction = Vec2::new(
+                    direction.x + plane.0 * camera_x,
+                    direction.y + plane.1 * camera_x,
+                );*/
+
+                let ray_direction = Vec2::new(0.,0.);
+
+                let mut grid_position = (position.x as i32, position.y as i32);
+
+                // Length of ray from current position to next x/y side
+                let mut side_distance = Vec2::new(0.0, 0.0);
+
+                // Length of ray from x/y to next x/y side
+                let delta_distance = Vec2::new(
+                    (1.0 / ray_direction.x()).abs(),
+                    (1.0 / ray_direction.y()).abs(),
+                );
+
+                // Should we step negative, or positive? (-1,+1)
+                let mut step = (0, 0);
+
+                let mut hit = false;
+
+                // Which side was hit
+                let mut side_hit = 0;
+
+                if ray_direction.x() < 0.0 {
+                    step.0 = -1;
+                    side_distance.set_x((position.x - grid_position.0 as f32) * delta_distance.x());
+                } else {
+                    step.0 = 1;
+                    side_distance
+                        .set_x((grid_position.0 as f32 + 1.0 - position.x) * delta_distance.x());
+                }
+
+                if ray_direction.y() < 0.0 {
+                    step.1 = -1;
+                    side_distance.set_y((position.y - grid_position.1 as f32) * delta_distance.y());
+                } else {
+                    step.1 = 1;
+                    side_distance
+                        .set_y((grid_position.1 as f32 + 1.0 - position.y) * delta_distance.y());
+                }
+
+                let mut traveled = 0;
+                // Cast the ray
+                while !hit && traveled < 1000 {
+                    if side_distance.x() < side_distance.y() {
+                        side_distance.set_x(side_distance.x() + delta_distance.x());
+                        grid_position.0 += step.0;
+                        side_hit = 0;
+                    } else {
+                        side_distance.set_y(side_distance.y() + delta_distance.y());
+                        grid_position.1 += step.1;
+                        side_hit = 1;
+                    }
+
+                    // TODO: Check with an actual map
+                    if grid_position.0 == 0
+                        || grid_position.1 == 0
+                        || (grid_position.0 == 20 && grid_position.1 == 20)
+                    {
+                        hit = true;
+                    }
+                    traveled += 1;
+                }
+
+                if !hit {
+                    continue;
+                }
+
+                let distance_to_wall = if side_hit == 0 {
+                    (grid_position.0 as f32 - position.x + (1. - step.0 as f32) / 2.0)
+                        / ray_direction.x()
+                } else {
+                    (grid_position.1 as f32 - position.y + (1. - step.1 as f32) / 2.0)
+                        / ray_direction.y()
+                };
+
+                let line_height = (resulting_resolution.1 as f32 / distance_to_wall) as i32;
+
+                let draw_start = -line_height / 2 + resulting_resolution.1 / 2;
+                let draw_end = line_height / 2 + resulting_resolution.1 / 2;
+
+                canvas.set_draw_color(if side_hit == 0 {
+                    (65, 65, 65)
+                } else {
+                    (44, 44, 44)
+                });
+                canvas.draw_line((x, draw_start), (x, draw_end))?;
+            }
+
+            canvas.set_draw_color((185, 66, 66));
             canvas.draw_point((position.x as i32, position.y as i32))?;
+            canvas.set_draw_color((66, 76, 222));
+            let direction = rotation.direction();
+            let dv = Vec2::new(direction.x, direction.y) * 2.5;
+            let view_point_end = (
+                position.x as i32 + dv.x() as i32,
+                position.y as i32 + dv.y() as i32,
+            );
+            canvas.draw_line(
+                (position.x as i32, position.y as i32),
+                (view_point_end.0, view_point_end.1),
+            )?;
         }
         canvas.present();
 
