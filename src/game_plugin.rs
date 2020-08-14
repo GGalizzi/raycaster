@@ -51,8 +51,10 @@ impl Position {
         Position { x, y }
     }
 
-    pub fn move_towards(&self, dir: &Direction) -> Position {
-        self + dir * 0.25
+    pub fn move_towards(&self, dir: &Direction, dt: f32) -> Position {
+        // TODO: Would be a component, or stat or something
+        let speed = 5000.0;
+        self + dir * (dt * speed)
     }
 }
 
@@ -71,12 +73,9 @@ fn spawn(mut commands: Commands) {
     println!("should spaned?");
 }
 
-fn movement(keypress: Res<Keypress>, mut position: Mut<Position>, direction: &Direction) {
+fn movement(keypress: Res<Keypress>, time: Res<Time>, mut position: Mut<Position>, direction: &Direction) {
     if keypress.is(Keycode::W) {
-        *position = position.move_towards(direction);
-        
-        println!("position {:?}", *position);
-        println!("direction {:?}", direction);
+        *position = position.move_towards(direction, time.delta_seconds);
     }
 }
 
