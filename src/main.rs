@@ -9,6 +9,28 @@ mod game_plugin;
 use self::base_plugin::BasePlugin;
 use self::game_plugin::{GamePlugin, Player, Position};
 
+#[derive(Debug)]
+pub struct MouseMotion {
+    x: i32,
+    y: i32,
+}
+
+impl MouseMotion {
+    pub fn new() -> MouseMotion {
+        MouseMotion { x: 0, y: 0 }
+    }
+
+    pub fn set(&mut self, x: i32, y: i32) {
+        self.x = x;
+        self.y = y;
+    }
+
+    pub fn clear(&mut self) {
+        self.x = 0;
+        self.y = 0;
+    }
+}
+
 pub struct Keypress {
     val: Option<Keycode>,
 }
@@ -53,8 +75,11 @@ fn main() -> Result<(), String> {
     canvas.set_draw_color((0, 0, 0));
     canvas.clear();
     canvas.present();
+    
+    sdl_context.mouse().capture(true);
 
     let keypress = Keypress::new();
+    let mouse_motion = MouseMotion::new();
 
     let mut event_pump = sdl_context.event_pump()?;
 
@@ -63,6 +88,7 @@ fn main() -> Result<(), String> {
             .add_plugin(BasePlugin)
             .add_plugin(GamePlugin)
             .add_resource(keypress)
+            .add_resource(mouse_motion)
             .app,
         App::default(),
     );
@@ -78,24 +104,36 @@ fn main() -> Result<(), String> {
         {
             let mut kp = app.resources.get_mut::<Keypress>().unwrap();
             kp.clear();
-            for event in event_pump.poll_iter() {
-                match event {
-                    Event::Quit { .. } => {
-                        break 'game;
-                    }
-                    Event::KeyDown { keycode, .. } => {
-                        if let Some(kc) = keycode {
+        }
+
+        {
+            let mut mm = app.resources.get_mut::<MouseMotion>().unwrap();
+            mm.clear();
+        }
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. } => {
+                    break 'game;
+                }
+                Event::MouseMotion { xrel, yrel, .. } => {
+                    let mut mm = app.resources.get_mut::<MouseMotion>().unwrap();
+                    mm.set(xrel, yrel);
+                }
+                Event::KeyDown { keycode, .. } => {
+                    if let Some(kc) = keycode {
+                        {
+                            let mut kp = app.resources.get_mut::<Keypress>().unwrap();
                             kp.set(kc);
                         }
                     }
-                    _ => {}
                 }
+                _ => {}
             }
         }
 
         canvas.set_draw_color((255, 0, 0));
         for (position, _) in app.world.query::<(&Position, &Player)>().iter() {
-            canvas.draw_point((position.x, position.y))?;
+            canvas.draw_point((position.x as i32, position.y as i32))?;
         }
         canvas.present();
 

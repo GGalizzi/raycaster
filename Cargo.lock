@@ -2043,6 +2043,7 @@ name = "raycaster"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "glam",
  "sdl2",
 ]
 
