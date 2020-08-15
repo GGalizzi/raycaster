@@ -91,7 +91,7 @@ impl Plugin for GamePlugin {
 }
 
 fn spawn(mut commands: Commands) {
-    commands.spawn((Position::new(50., 50.), Player, Rotation::default()));
+    commands.spawn((Position::new(50., 50.), Player, Rotation::new(45.0)));
     println!("should spaned?");
 }
 
@@ -123,20 +123,24 @@ const TO_RAD: f64 = std::f64::consts::PI / 180.;
 
 #[derive(Default, Clone)]
 pub struct Rotation {
-    pub degrees: f32,
+    cur_degrees: f32,
 }
 
 impl Rotation {
     pub fn new(degrees: f32) -> Rotation {
-        Rotation {
-            degrees,
-        }
+        let mut rot = Rotation { cur_degrees: 0.0 };
+        rot.add(degrees);
+        rot
     }
-    
+
+    pub fn degrees(&self) -> f32 {
+        self.cur_degrees
+    }
+
     pub fn radians(&self) -> f32 {
-        self.degrees * TO_RAD as f32
+        self.cur_degrees * TO_RAD as f32
     }
-    
+
     pub fn rotated(&self, degrees: f32) -> Rotation {
         let mut rotation = self.clone();
         rotation.add(degrees);
@@ -144,19 +148,23 @@ impl Rotation {
     }
 
     pub fn add(&mut self, degrees: f32) {
-        self.degrees += degrees;
-        if self.degrees >= 360.0 {
-            self.degrees = self.degrees - 360.0;
+        self.cur_degrees += degrees;
+        if self.cur_degrees >= 360.0 {
+            self.cur_degrees = self.cur_degrees - 360.0;
         }
 
-        if self.degrees < 0.0 {
-            self.degrees += 360.0;
+        while self.cur_degrees < 0.0 {
+            self.cur_degrees += 360.0;
         }
     }
 
     pub fn direction(&self) -> Direction {
         let v = Vec2::new(self.radians().cos(), self.radians().sin()).normalize();
         Direction::new(v.x(), v.y())
+    }
+
+    pub fn is_facing_up(&self) -> bool {
+        self.degrees() >= 180. && self.degrees() < 360.0
     }
 }
 

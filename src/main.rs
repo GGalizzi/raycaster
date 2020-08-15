@@ -5,9 +5,11 @@ use sdl2::{event::Event, keyboard::Keycode};
 
 mod base_plugin;
 mod game_plugin;
+mod raycaster;
 
-use self::base_plugin::BasePlugin;
-use self::game_plugin::{GamePlugin, Player, Position};
+use base_plugin::BasePlugin;
+use game_plugin::{GamePlugin, Player, Position};
+use raycaster::raycast;
 
 #[derive(Debug)]
 pub struct MouseMotion {
@@ -60,7 +62,7 @@ fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_sub = sdl_context.video()?;
 
-    let resulting_resolution = (640, 400);
+    let resulting_resolution = (320, 200);
     let actual_resolution = (960, 600);
     let scale = (
         actual_resolution.0 as f32 / resulting_resolution.0 as f32,
@@ -109,8 +111,6 @@ fn main() -> Result<(), String> {
         &mut app.resources,
     );
 
-    let mut fov: f32 = 60.0;
-
     'game: loop {
         {
             let mut kp = app.resources.get_mut::<Keypress>().unwrap();
@@ -121,6 +121,7 @@ fn main() -> Result<(), String> {
             let mut mm = app.resources.get_mut::<MouseMotion>().unwrap();
             mm.clear();
         }
+        let mut fov = 60;
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => {
@@ -131,10 +132,10 @@ fn main() -> Result<(), String> {
                     mm.set(xrel, yrel);
                 }
                 Event::KeyDown { keycode, .. } if keycode.unwrap() == Keycode::Q => {
-                    fov -= 5.0;
+                    fov -= 5;
                 }
                 Event::KeyDown { keycode, .. } if keycode.unwrap() == Keycode::E => {
-                    fov += 5.0;
+                    fov += 5;
                 }
                 Event::KeyDown { keycode, .. } => {
                     if let Some(kc) = keycode {
@@ -160,108 +161,7 @@ fn main() -> Result<(), String> {
             .query::<(&Position, &Player, &game_plugin::Rotation)>()
             .iter()
         {
-            let mut ray_rotation = game_plugin::Rotation::new(rotation.degrees - fov / 2.0);
-            for x in 0..resulting_resolution.0 {
-                let camera_x = 2.0 * x as f32 / (resulting_resolution.0 as f32) - 1.0;
-                let direction = rotation.direction() * (fov / 100.0);
-                let plane = game_plugin::Rotation::new(rotation.degrees + 90.0).direction();
-                let ray_direction = game_plugin::Direction::new(
-                    direction.x + plane.x * camera_x,
-                    direction.y + plane.y * camera_x,
-                );
-
-                /*
-                let ray_direction = ray_rotation.direction();
-                ray_rotation.degrees += angle_between_rays;
-                */
-
-                let mut grid_position = (position.x as i32, position.y as i32);
-
-                // Length of ray from current position to next x/y side
-                let mut side_distance = Vec2::new(0.0, 0.0);
-
-                // Length of ray from x/y to next x/y side
-                let delta_distance =
-                    Vec2::new((1.0 / ray_direction.x).abs(), (1.0 / ray_direction.y).abs());
-
-                // Should we step negative, or positive? (-1,+1)
-                let mut step = (0, 0);
-
-                let mut hit = false;
-
-                // Which side was hit
-                let mut side_hit = 0;
-
-                if ray_direction.x < 0.0 {
-                    step.0 = -1;
-                    side_distance.set_x((position.x - grid_position.0 as f32) * delta_distance.x());
-                } else {
-                    step.0 = 1;
-                    side_distance
-                        .set_x((grid_position.0 as f32 + 1.0 - position.x) * delta_distance.x());
-                }
-
-                if ray_direction.y < 0.0 {
-                    step.1 = -1;
-                    side_distance.set_y((position.y - grid_position.1 as f32) * delta_distance.y());
-                } else {
-                    step.1 = 1;
-                    side_distance
-                        .set_y((grid_position.1 as f32 + 1.0 - position.y) * delta_distance.y());
-                }
-
-                let mut traveled = 0;
-                // Cast the ray
-                while !hit && traveled < 1000 {
-                    if side_distance.x() < side_distance.y() {
-                        side_distance.set_x(side_distance.x() + delta_distance.x());
-                        grid_position.0 += step.0;
-                        side_hit = 0;
-                    } else {
-                        side_distance.set_y(side_distance.y() + delta_distance.y());
-                        grid_position.1 += step.1;
-                        side_hit = 1;
-                    }
-
-                    // TODO: Check with an actual map
-                    if grid_position.0 == 0
-                        || grid_position.1 == 0
-                        || (grid_position.0 == 20 && grid_position.1 == 20)
-                    {
-                        hit = true;
-                    }
-                    traveled += 1;
-                }
-
-                if !hit {
-                    continue;
-                }
-
-                let distance_to_wall = if side_hit == 0 {
-                    (grid_position.0 as f32 - position.x + (1. - step.0 as f32) / 2.0)
-                        / ray_direction.x
-                } else {
-                    (grid_position.1 as f32 - position.y + (1. - step.1 as f32) / 2.0)
-                        / ray_direction.y
-                };
-
-                let line_height = (resulting_resolution.1 as f32 / distance_to_wall) as i32;
-
-                let draw_start = -line_height / 2 + resulting_resolution.1 / 2;
-                let draw_end = line_height / 2 + resulting_resolution.1 / 2;
-
-                let mut mult = -(0.1 * std::cmp::min(distance_to_wall as i32, 1000) as f32) + 2.5;
-                if mult <= 0.8 {
-                    mult = 0.8;
-                }
-                canvas.set_draw_color(if side_hit == 0 {
-                    ((65. * mult) as u8, (65. * mult) as u8, (65. * mult) as u8)
-                } else {
-                    let mult = mult * 1.05;
-                    ((44. * mult) as u8, (44. * mult) as u8, (44. * mult) as u8)
-                });
-                canvas.draw_line((x, draw_start), (x, draw_end))?;
-            }
+            raycast(resulting_resolution, fov, position, rotation, &mut canvas);
 
             canvas.set_draw_color((185, 66, 66));
             canvas.draw_point((position.x as i32, position.y as i32))?;
