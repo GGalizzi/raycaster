@@ -35,6 +35,17 @@ impl std::ops::Mul<f32> for &Direction {
     }
 }
 
+impl std::ops::Mul<f32> for Direction {
+    type Output = Direction;
+
+    fn mul(self, rhs: f32) -> Direction {
+        Direction {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
+    }
+}
+
 impl std::ops::Neg for Direction {
     type Output = Direction;
 
@@ -62,9 +73,9 @@ impl Position {
         Position { x, y }
     }
 
-    pub fn move_towards(&self, dir: &Direction, dt: f32) -> Position {
+    pub fn move_towards(&self, dir: Direction, dt: f32) -> Position {
         // TODO: Would be a component, or stat or something
-        let speed = 120.0;
+        let speed = 320.0;
         self + dir * (dt * speed)
     }
 }
@@ -92,21 +103,46 @@ fn movement(
 ) {
     let direction = rotation.direction();
     if keypress.is(Keycode::W) {
-        *position = position.move_towards(&direction, time.delta_seconds);
+        *position = position.move_towards(direction, time.delta_seconds);
     }
 
     if keypress.is(Keycode::S) {
-        *position = position.move_towards(&-direction, time.delta_seconds);
+        *position = position.move_towards(-direction, time.delta_seconds);
+    }
+
+    if keypress.is(Keycode::A) {
+        *position = position.move_towards(rotation.rotated(-90.).direction(), time.delta_seconds);
+    }
+
+    if keypress.is(Keycode::D) {
+        *position = position.move_towards(rotation.rotated(90.).direction(), time.delta_seconds);
     }
 }
 
-#[derive(Default)]
+const TO_RAD: f64 = std::f64::consts::PI / 180.;
+
+#[derive(Default, Clone)]
 pub struct Rotation {
-    radians: f32,
-    degrees: f32,
+    pub degrees: f32,
 }
 
 impl Rotation {
+    pub fn new(degrees: f32) -> Rotation {
+        Rotation {
+            degrees,
+        }
+    }
+    
+    pub fn radians(&self) -> f32 {
+        self.degrees * TO_RAD as f32
+    }
+    
+    pub fn rotated(&self, degrees: f32) -> Rotation {
+        let mut rotation = self.clone();
+        rotation.add(degrees);
+        rotation
+    }
+
     pub fn add(&mut self, degrees: f32) {
         self.degrees += degrees;
         if self.degrees >= 360.0 {
@@ -119,7 +155,7 @@ impl Rotation {
     }
 
     pub fn direction(&self) -> Direction {
-        let v = Vec2::new(self.radians.cos(), self.radians.sin()).normalize();
+        let v = Vec2::new(self.radians().cos(), self.radians().sin()).normalize();
         Direction::new(v.x(), v.y())
     }
 }
@@ -128,7 +164,5 @@ fn move_camera(mouse_motion: Res<MouseMotion>, mut rotation: Mut<Rotation>) {
     if mouse_motion.x == 0 {
         return;
     }
-    let to_rad = std::f64::consts::PI / 180.;
     rotation.add(mouse_motion.x as f32);
-    rotation.radians = (rotation.degrees as f64 * to_rad) as f32;
 }

@@ -60,7 +60,7 @@ fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_sub = sdl_context.video()?;
 
-    let resulting_resolution = (320, 200);
+    let resulting_resolution = (640, 400);
     let actual_resolution = (960, 600);
     let scale = (
         actual_resolution.0 as f32 / resulting_resolution.0 as f32,
@@ -109,6 +109,8 @@ fn main() -> Result<(), String> {
         &mut app.resources,
     );
 
+    let mut fov: f32 = 60.0;
+
     'game: loop {
         {
             let mut kp = app.resources.get_mut::<Keypress>().unwrap();
@@ -128,6 +130,12 @@ fn main() -> Result<(), String> {
                     let mut mm = app.resources.get_mut::<MouseMotion>().unwrap();
                     mm.set(xrel, yrel);
                 }
+                Event::KeyDown { keycode, .. } if keycode.unwrap() == Keycode::Q => {
+                    fov -= 5.0;
+                }
+                Event::KeyDown { keycode, .. } if keycode.unwrap() == Keycode::E => {
+                    fov += 5.0;
+                }
                 Event::KeyDown { keycode, .. } => {
                     if let Some(kc) = keycode {
                         {
@@ -143,22 +151,29 @@ fn main() -> Result<(), String> {
         canvas.set_draw_color((15, 15, 25));
         canvas.clear();
 
-        let fov = 60.0;
-        let distance_to_plane = (resulting_resolution.0 / 2) / (fov / 2.0 as f64).tan() as i32;
-        let angle_between_rays = fov / resulting_resolution.0 as f64;
+        /*
+        let distance_to_plane = (resulting_resolution.0 / 2) / (fov / 2.0).tan() as i32;
+        let angle_between_rays = fov / resulting_resolution.0 as f32;
+        */
         for (position, _, rotation) in app
             .world
             .query::<(&Position, &Player, &game_plugin::Rotation)>()
             .iter()
         {
+            let mut ray_rotation = game_plugin::Rotation::new(rotation.degrees - fov / 2.0);
             for x in 0..resulting_resolution.0 {
                 let camera_x = 2.0 * x as f32 / (resulting_resolution.0 as f32) - 1.0;
-                /*let ray_direction = Vec2::new(
-                    direction.x + plane.0 * camera_x,
-                    direction.y + plane.1 * camera_x,
-                );*/
+                let direction = rotation.direction() * (fov / 100.0);
+                let plane = game_plugin::Rotation::new(rotation.degrees + 90.0).direction();
+                let ray_direction = game_plugin::Direction::new(
+                    direction.x + plane.x * camera_x,
+                    direction.y + plane.y * camera_x,
+                );
 
-                let ray_direction = Vec2::new(0.,0.);
+                /*
+                let ray_direction = ray_rotation.direction();
+                ray_rotation.degrees += angle_between_rays;
+                */
 
                 let mut grid_position = (position.x as i32, position.y as i32);
 
@@ -166,10 +181,8 @@ fn main() -> Result<(), String> {
                 let mut side_distance = Vec2::new(0.0, 0.0);
 
                 // Length of ray from x/y to next x/y side
-                let delta_distance = Vec2::new(
-                    (1.0 / ray_direction.x()).abs(),
-                    (1.0 / ray_direction.y()).abs(),
-                );
+                let delta_distance =
+                    Vec2::new((1.0 / ray_direction.x).abs(), (1.0 / ray_direction.y).abs());
 
                 // Should we step negative, or positive? (-1,+1)
                 let mut step = (0, 0);
@@ -179,7 +192,7 @@ fn main() -> Result<(), String> {
                 // Which side was hit
                 let mut side_hit = 0;
 
-                if ray_direction.x() < 0.0 {
+                if ray_direction.x < 0.0 {
                     step.0 = -1;
                     side_distance.set_x((position.x - grid_position.0 as f32) * delta_distance.x());
                 } else {
@@ -188,7 +201,7 @@ fn main() -> Result<(), String> {
                         .set_x((grid_position.0 as f32 + 1.0 - position.x) * delta_distance.x());
                 }
 
-                if ray_direction.y() < 0.0 {
+                if ray_direction.y < 0.0 {
                     step.1 = -1;
                     side_distance.set_y((position.y - grid_position.1 as f32) * delta_distance.y());
                 } else {
@@ -226,10 +239,10 @@ fn main() -> Result<(), String> {
 
                 let distance_to_wall = if side_hit == 0 {
                     (grid_position.0 as f32 - position.x + (1. - step.0 as f32) / 2.0)
-                        / ray_direction.x()
+                        / ray_direction.x
                 } else {
                     (grid_position.1 as f32 - position.y + (1. - step.1 as f32) / 2.0)
-                        / ray_direction.y()
+                        / ray_direction.y
                 };
 
                 let line_height = (resulting_resolution.1 as f32 / distance_to_wall) as i32;
@@ -237,10 +250,15 @@ fn main() -> Result<(), String> {
                 let draw_start = -line_height / 2 + resulting_resolution.1 / 2;
                 let draw_end = line_height / 2 + resulting_resolution.1 / 2;
 
+                let mut mult = -(0.1 * std::cmp::min(distance_to_wall as i32, 1000) as f32) + 2.5;
+                if mult <= 0.8 {
+                    mult = 0.8;
+                }
                 canvas.set_draw_color(if side_hit == 0 {
-                    (65, 65, 65)
+                    ((65. * mult) as u8, (65. * mult) as u8, (65. * mult) as u8)
                 } else {
-                    (44, 44, 44)
+                    let mult = mult * 1.05;
+                    ((44. * mult) as u8, (44. * mult) as u8, (44. * mult) as u8)
                 });
                 canvas.draw_line((x, draw_start), (x, draw_end))?;
             }
