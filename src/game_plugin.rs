@@ -91,7 +91,7 @@ impl Plugin for GamePlugin {
 }
 
 fn spawn(mut commands: Commands) {
-    commands.spawn((Position::new(50., 50.), Player, Rotation::new(45.0)));
+    commands.spawn((Position::new(5., 5.), Player, Rotation::new(45.0)));
     println!("should spaned?");
 }
 
@@ -119,8 +119,6 @@ fn movement(
     }
 }
 
-const TO_RAD: f64 = std::f64::consts::PI / 180.;
-
 #[derive(Default, Clone)]
 pub struct Rotation {
     cur_degrees: f32,
@@ -132,13 +130,18 @@ impl Rotation {
         rot.add(degrees);
         rot
     }
+    
+    pub fn from_radians(radians: f32) -> Rotation {
+        let degrees = radians.to_degrees();
+        Rotation::new(degrees as f32)
+    }
 
     pub fn degrees(&self) -> f32 {
         self.cur_degrees
     }
 
     pub fn radians(&self) -> f32 {
-        self.cur_degrees * TO_RAD as f32
+        self.cur_degrees.to_radians()
     }
 
     pub fn rotated(&self, degrees: f32) -> Rotation {
@@ -165,6 +168,10 @@ impl Rotation {
 
     pub fn is_facing_up(&self) -> bool {
         self.degrees() >= 180. && self.degrees() < 360.0
+    }
+
+    pub fn is_facing_left(&self) -> bool {
+        self.degrees() >= 90. && self.degrees() < 270.0
     }
 }
 
