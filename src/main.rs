@@ -122,7 +122,7 @@ fn main() -> Result<(), String> {
             let mut mm = app.resources.get_mut::<MouseMotion>().unwrap();
             mm.clear();
         }
-        let mut fov = 66;
+        let mut fov = 60;
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => {

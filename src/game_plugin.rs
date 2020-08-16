@@ -160,6 +160,14 @@ impl Rotation {
             self.cur_degrees += 360.0;
         }
     }
+    
+    pub fn tan(&self) -> f32 {
+        self.radians().tan()
+    }
+    
+    pub fn cos(&self) -> f32 {
+        self.radians().cos()
+    }
 
     pub fn direction(&self) -> Direction {
         let v = Vec2::new(self.radians().cos(), self.radians().sin()).normalize();

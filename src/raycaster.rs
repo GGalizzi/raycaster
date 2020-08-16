@@ -13,17 +13,18 @@ pub fn raycast(
     angle_mod: f32,
 ) {
     let map: Map = Map::new();
-    let fov = (fov as f32).to_radians();
+    let half_fov = Rotation::new(fov as f32 / 2.0);
+    let fov = Rotation::new(fov as f32);
     // using the formula tan(angle) = opposite / adjacent
     // We know the angle, because that's FOV/2
     // We know opposite, because that's projection's plane width / 2
-    let distance_to_plane = ((projection_plane.0 / 2) as f32 / (fov / 2.0).tan()) as i32;
+    let distance_to_plane = (projection_plane.0 / 2) as f32 / half_fov.tan();
 
     // The angle increment between rays is known by the fov. ie, how many steps would you need to fit the plane.
-    let angle_between_rays = fov / projection_plane.0 as f32 + angle_mod;
+    let angle_between_rays = fov.degrees() / projection_plane.0 as f32 + angle_mod;
 
     // The starting angle is the viewing angle substracted half the fov, so once you add all the angles, you'd get back to your FOV.
-    let mut ray_rotation = Rotation::from_radians(rotation.radians() - fov / 2.0);
+    let mut ray_rotation = rotation.rotated(-half_fov.degrees());
 
     let tile_size = TILE_SIZE as f32;
     for x in 0..projection_plane.0 {
@@ -40,7 +41,7 @@ pub fn raycast(
             let mut intersection_point = {
                 let intersection_point_y = ((position.y / tile_size) as i32 * TILE_SIZE) + to_next;
                 let intersection_point_x = (position.x
-                    + (position.y - intersection_point_y as f32) / ray_rotation.radians().tan())
+                    + (position.y - intersection_point_y as f32) / ray_rotation.tan())
                     as i32;
                 IntersectionPoint::new(intersection_point_x, intersection_point_y, TILE_SIZE)
             };
@@ -54,13 +55,13 @@ pub fn raycast(
                     1.0
                 };
 
-            let x_dist = tile_size / ray_rotation.radians().tan();
+            let x_dist = tile_size / ray_rotation.tan();
 
             let mut traveled = 0;
             let mut hit = false;
 
             while !hit {
-                if traveled >= 500
+                if traveled >= 5000
                     || intersection_point.out_of_bounds()
                     || map.out_of_bounds(intersection_point.as_grid().to_pair())
                 {
@@ -83,11 +84,11 @@ pub fn raycast(
 
             if hit {
 
-                (position.x - intersection_point.x as f32).hypot(position.y - intersection_point.y as f32) as i32
+                (position.x - intersection_point.x as f32).hypot(position.y - intersection_point.y as f32)
                 /*((position.x - intersection_point.x as f32).abs()
                     / ray_rotation.radians().cos()) as i32*/
             } else {
-                i32::MAX
+                f32::MAX
             }
         };
 
@@ -100,9 +101,9 @@ pub fn raycast(
                 TILE_SIZE
             };
             let mut intersection_point = {
-                let intersection_point_x = (position.x / tile_size) as i32 * TILE_SIZE + to_next;
+                let intersection_point_x = (position.x / tile_size).floor() as i32 * TILE_SIZE + to_next;
                 let intersection_point_y = position.y
-                    + (position.x - intersection_point_x as f32) * ray_rotation.radians().tan();
+                    + (position.x - intersection_point_x as f32) * ray_rotation.tan();
                 IntersectionPoint::new(intersection_point_x, intersection_point_y as i32, TILE_SIZE)
             };
 
@@ -111,13 +112,13 @@ pub fn raycast(
             } else {
                 TILE_SIZE
             };
-            let y_dist = tile_size * ray_rotation.radians().tan();
+            let y_dist = tile_size * ray_rotation.tan();
 
             let mut traveled = 0;
             let mut hit = false;
 
             while !hit {
-                if traveled >= 500
+                if traveled >= 5000
                     || intersection_point.out_of_bounds()
                     || map.out_of_bounds(intersection_point.as_grid().to_pair())
                 {
@@ -142,13 +143,13 @@ pub fn raycast(
                 /*((position.y - intersection_point.y as f32).abs()
                     / ray_rotation.radians().sin()) as i32
                     **/
-                (position.x - intersection_point.x as f32).hypot(position.y - intersection_point.y as f32) as i32
+                (position.x - intersection_point.x as f32).hypot(position.y - intersection_point.y as f32)
             } else {
-                i32::MAX
+                f32::MAX
             }
         };
 
-        let hit = !(horizontal_distance == i32::MAX && vertical_distance == i32::MAX);
+        let hit = !(horizontal_distance == f32::MAX && vertical_distance == f32::MAX);
 
         if hit {
             let (side, distance_to_wall) = if horizontal_distance < vertical_distance {
@@ -156,15 +157,18 @@ pub fn raycast(
             } else {
                 ('v', vertical_distance)
             };
-            //let distance_to_wall = (distance_to_wall as f32 * ray_rotation.radians().cos()) as i32;
+
+            //let beta = Rotation::new(-half_fov.degrees()).rotated(angle_between_rays * x as f32);
+            //println!("beta {:?}", beta.degrees());
+            // let distance_to_wall = distance_to_wall / (ray_rotation.radians() - rotation.radians()).cos();
             
             //println!("dtw {:?}",distance_to_wall);
-            let projected_height = if distance_to_wall <= 0 { 0 } else { TILE_SIZE * distance_to_plane / distance_to_wall };
+            let projected_height = if distance_to_wall <= f32::EPSILON { 0.0 } else { tile_size * distance_to_plane / distance_to_wall };
             
             let plane_center = projection_plane.1 / 2;
             
-            let top_of_wall = plane_center - projected_height / 2;
-            let bottom_of_wall = plane_center + projected_height / 2;
+            let top_of_wall = plane_center - projected_height as i32 / 2;
+            let bottom_of_wall = plane_center + projected_height as i32 / 2;
             
             if side == 'h' {
                 canvas.set_draw_color((98, 10, 10));
@@ -173,8 +177,12 @@ pub fn raycast(
             }
             canvas.draw_line((x, top_of_wall), (x, bottom_of_wall)).unwrap();
         }
+        
+        if rotation.degrees() == 90.0 && (x == 0 || x == projection_plane.0 - 1) {
+            println!("angleray {:?}", ray_rotation.degrees());
+        }
 
-        ray_rotation = Rotation::from_radians(ray_rotation.radians() + angle_between_rays);
+        ray_rotation = ray_rotation.rotated(angle_between_rays);
     }
 }
 
@@ -232,7 +240,7 @@ impl Map {
     }
 
     pub fn is_blocking_at(&self, (x, y): (i32, i32)) -> bool {
-        x == 2 || y == 2
+        x == 0 || y == 0
         /*
         let given_idx = (self.width * y + x) as usize;
         if given_idx > 285 {
