@@ -12,7 +12,7 @@ pub fn raycast(
     canvas: &mut Canvas<Window>,
     angle_mod: f32,
     mut debug: bool,
-) {
+) -> Result<(), String> {
     let map: Map = Map::new();
     let half_fov = Rotation::new(fov as f32 / 2.0);
     let fov = Rotation::new(fov as f32);
@@ -51,11 +51,13 @@ pub fn raycast(
         canvas.set_draw_color((20, 50, 20));
         let ray_dir = ray_rotation.direction() * 5.0;
         let some_distance_away = IntersectionPoint::new(position.x + ray_dir.x, position.y + ray_dir.y, TILE_SIZE);
-        canvas.draw_line((position.x as i32, position.y as i32), (some_distance_away.x as i32, some_distance_away.y as i32));
+        canvas.draw_line((position.x as i32, position.y as i32), (some_distance_away.x as i32, some_distance_away.y as i32))?;
 
         // Done, next angle
         ray_rotation.add(degrees_per_iteration);
     }
+    
+    Ok(())
 }
 
 // Looks for horizontal grid lines
@@ -69,7 +71,7 @@ fn look_for_horizontal(
     position: &Position,
     rotation: &Rotation,
     canvas: &mut Canvas<Window>,
-) {
+) -> Result<(), String> {
     let tile_size = TILE_SIZE as f32;
     // Define the first intersection
     let intersection = {
@@ -92,13 +94,13 @@ fn look_for_horizontal(
 
     let distance_to_next_x = distance_to_next_y * rotation.tan();
 
-    canvas.draw_point((intersection.x as i32, intersection.y as i32));
+    canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
     let intersection = IntersectionPoint::new(
         intersection.x + distance_to_next_x,
         intersection.y + distance_to_next_y,
         TILE_SIZE,
     );
-    canvas.draw_point((intersection.x as i32, intersection.y as i32));
+    canvas.draw_point((intersection.x as i32, intersection.y as i32))
 }
 
 // Looks for vertical grid lines

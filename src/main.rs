@@ -62,7 +62,7 @@ fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_sub = sdl_context.video()?;
 
-    let resulting_resolution = (320, 200);
+    let resulting_resolution = (160, 100);
     let actual_resolution = (960, 600);
     let scale = (
         actual_resolution.0 as f32 / resulting_resolution.0 as f32,
