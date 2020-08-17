@@ -111,7 +111,9 @@ fn main() -> Result<(), String> {
         &mut app.resources,
     );
 
-        let mut angle_mod = 0.0;
+    let mut angle_mod = 0.0;
+    let mut debug = false;
+
     'game: loop {
         {
             let mut kp = app.resources.get_mut::<Keypress>().unwrap();
@@ -132,11 +134,14 @@ fn main() -> Result<(), String> {
                     let mut mm = app.resources.get_mut::<MouseMotion>().unwrap();
                     mm.set(xrel, yrel);
                 }
+                Event::KeyDown { keycode, .. } if keycode.unwrap() == Keycode::H => {
+                    debug = !debug;
+                }
                 Event::KeyDown { keycode, .. } if keycode.unwrap() == Keycode::Q => {
-                    angle_mod -= 0.00025;
+                    angle_mod -= 1.05025;
                 }
                 Event::KeyDown { keycode, .. } if keycode.unwrap() == Keycode::E => {
-                    angle_mod += 0.00025;
+                    angle_mod += 1.05025;
                 }
                 Event::KeyDown { keycode, .. } => {
                     if let Some(kc) = keycode {
@@ -162,7 +167,18 @@ fn main() -> Result<(), String> {
             .query::<(&Position, &Player, &game_plugin::Rotation)>()
             .iter()
         {
-            raycast(resulting_resolution, fov, position, rotation, &mut canvas, angle_mod);
+            raycast(
+                resulting_resolution,
+                fov,
+                position,
+                rotation,
+                &mut canvas,
+                angle_mod,
+                debug,
+            );
+            if debug {
+                debug = false;
+            }
 
             canvas.set_draw_color((185, 66, 66));
             canvas.draw_point((position.x as i32, position.y as i32))?;

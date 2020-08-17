@@ -130,7 +130,7 @@ impl Rotation {
         rot.add(degrees);
         rot
     }
-    
+
     pub fn from_radians(radians: f32) -> Rotation {
         let degrees = radians.to_degrees();
         Rotation::new(degrees as f32)
@@ -160,11 +160,11 @@ impl Rotation {
             self.cur_degrees += 360.0;
         }
     }
-    
+
     pub fn tan(&self) -> f32 {
         self.radians().tan()
     }
-    
+
     pub fn cos(&self) -> f32 {
         self.radians().cos()
     }
@@ -176,10 +176,12 @@ impl Rotation {
 
     pub fn is_facing_up(&self) -> bool {
         self.degrees() >= 180. && self.degrees() < 360.0
+        //self.degrees() >= 0.0 && self.degrees() < 180.0
     }
 
     pub fn is_facing_left(&self) -> bool {
         self.degrees() >= 90. && self.degrees() < 270.0
+        // self.degrees() >= 90.0 && self.degrees() < 270.0
     }
 }
 
