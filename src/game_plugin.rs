@@ -91,7 +91,7 @@ impl Plugin for GamePlugin {
 }
 
 fn spawn(mut commands: Commands) {
-    commands.spawn((Position::new(5., 5.), Player, Rotation::new(45.0)));
+    commands.spawn((Position::new(5., 5.), Player, Rotation::new(90.0)));
     println!("should spaned?");
 }
 
