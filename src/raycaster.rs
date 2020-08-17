@@ -33,8 +33,6 @@ pub fn raycast(
     //  ºººº
     let mut ray_rotation = rotation.rotated( -half_fov.degrees());
     
-    println!("player pos {:?}", position);
-
     let tile_size = TILE_SIZE as f64;
     for x in 0..projection_plane.0 {
         // This is the angle that forms from the viewing direction to the current ray
@@ -45,8 +43,9 @@ pub fn raycast(
         let relative_angle = Rotation::new(half_fov.degrees() + x as f32 * degrees_per_iteration);
 
         canvas.set_draw_color((120, 120, 120));
-        look_for_horizontal(&ray_rotation, position, rotation, canvas);
-        //look_for_vertical
+        look_for_horizontal(&ray_rotation, position, rotation, canvas)?;
+        canvas.set_draw_color((100, 128, 128));
+        look_for_vertical(&ray_rotation, position, rotation, canvas)?;
 
         canvas.set_draw_color((20, 50, 20));
         let ray_dir = ray_rotation.direction() * 5.0;
@@ -91,7 +90,6 @@ fn look_for_horizontal(
     } else {
         tile_size
     };
-
     let distance_to_next_x = distance_to_next_y * rotation.tan();
 
     canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
@@ -112,6 +110,39 @@ fn look_for_horizontal(
 // ^  ^  ^  ^  ^
 //       |
 //     these
+fn look_for_vertical(
+    ray_rotation: &Rotation,
+    position: &Position,
+    rotation: &Rotation,
+    canvas: &mut Canvas<Window>,
+) -> Result<(), String> {
+    let tile_size = TILE_SIZE as f32;
+    
+    // Define the first intersection
+    let intersection = {
+        // We know the first_x that will be hit because it's
+        // the next (or previous) grid line from player position
+        let mut first_x = (position.x / tile_size).trunc() * tile_size;
+        // And if the ray is going right, then it's the next grid line
+        if !ray_rotation.is_facing_left() { first_x += tile_size; }
+        
+        // tan(θ) = opposite/adjacent
+        let first_y = position.y + (position.x - first_x) * -ray_rotation.tan();
+        
+        IntersectionPoint::new(first_x, first_y, TILE_SIZE)
+    };
+    
+    let distance_to_next_x = if ray_rotation.is_facing_left() { -tile_size } else { tile_size };
+    let distance_to_next_y = distance_to_next_x * ray_rotation.tan();
+
+    canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
+    let intersection = IntersectionPoint::new(
+        intersection.x + distance_to_next_x,
+        intersection.y + distance_to_next_y,
+        TILE_SIZE,
+    );
+    canvas.draw_point((intersection.x as i32, intersection.y as i32))
+}
 
 #[derive(Debug)]
 struct IntersectionPoint {
