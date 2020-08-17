@@ -77,16 +77,16 @@ fn look_for_horizontal(
     let intersection = {
         // The Y of the first intersection is going to be player_position_y / tile_size. And we add one tile_size to that if looking down
         let mut first_y = (position.y / tile_size).trunc() * tile_size;
-        if !rotation.is_facing_up() {
+        if !ray_rotation.is_facing_up() {
             first_y += tile_size;
         }
 
-        let first_x = position.x + (position.y - first_y) / ray_rotation.tan();
+        let first_x = position.x + (position.y - first_y) / -ray_rotation.tan();
 
         IntersectionPoint::new(first_x, first_y, TILE_SIZE)
     };
 
-    let distance_to_next_y = if rotation.is_facing_up() {
+    let distance_to_next_y = if ray_rotation.is_facing_up() {
         -tile_size
     } else {
         tile_size
