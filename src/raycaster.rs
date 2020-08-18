@@ -2,7 +2,7 @@ use sdl2::{render::Canvas, video::Window};
 
 use crate::game_plugin::{Position, Rotation};
 
-const TILE_SIZE: i32 = 4;
+const TILE_SIZE: i32 = 16;
 
 pub fn raycast(
     projection_plane: (i32, i32),
@@ -33,7 +33,7 @@ pub fn raycast(
     //  ºººº
     let mut ray_rotation = rotation.rotated(-half_fov.degrees());
 
-    let tile_size = TILE_SIZE as f64;
+    let tile_size = TILE_SIZE as f32;
     for x in 0..projection_plane.0 {
         // This is the angle that forms from the viewing direction to the current ray
         // \  |  /
@@ -43,18 +43,43 @@ pub fn raycast(
         let relative_angle = Rotation::new(half_fov.degrees() + x as f32 * degrees_per_iteration);
 
         canvas.set_draw_color((120, 120, 120));
-        look_for_horizontal(&ray_rotation, position, rotation, &map, canvas)?;
+        let horizontal_distance =
+            look_for_horizontal(&ray_rotation, position, rotation, &map, canvas)?;
         canvas.set_draw_color((100, 128, 128));
-        look_for_vertical(&ray_rotation, position, rotation, &map, canvas)?;
+        let vertical_distance = look_for_vertical(&ray_rotation, position, rotation, &map, canvas)?;
 
+        // Drawing some debug lines for the rays
         canvas.set_draw_color((20, 50, 20));
         let ray_dir = ray_rotation.direction() * 5.0;
         let some_distance_away =
             IntersectionPoint::new(position.x + ray_dir.x, position.y + ray_dir.y, TILE_SIZE);
+
         canvas.draw_line(
             (position.x as i32, position.y as i32),
             (some_distance_away.x as i32, some_distance_away.y as i32),
         )?;
+
+        // Kay, draw the walls now if we hit something
+        //let closest_hit = horizontal_distance.1.min(vertical_distance.1);
+        let ((intersection, closest_hit), side) = if horizontal_distance.1 < vertical_distance.1 {
+            (horizontal_distance, 'h')
+        } else {
+            (vertical_distance, 'v')
+        };
+
+        if closest_hit != f32::MAX {
+            let projected_height = (tile_size / closest_hit * distance_to_plane) as i32;
+
+            let mid_point = (projection_plane.1 / 2) as i32;
+
+            canvas.set_draw_color((100, 155, if side == 'v' { 155 } else { 255 }));
+            canvas.draw_line(
+                (x, mid_point - projected_height / 2),
+                (x, mid_point + projected_height / 2),
+            )?;
+            canvas.set_draw_color((220, if side == 'v' { 15 } else { 255 }, 55));
+            canvas.draw_point((intersection.x as i32, intersection.y as i32));
+        }
 
         // Done, next angle
         ray_rotation.add(degrees_per_iteration);
@@ -75,7 +100,7 @@ fn look_for_horizontal(
     rotation: &Rotation,
     map: &Map,
     canvas: &mut Canvas<Window>,
-) -> Result<f32, String> {
+) -> Result<(IntersectionPoint, f32), String> {
     let tile_size = TILE_SIZE as f32;
     // Define the first intersection
     let intersection = {
@@ -83,6 +108,8 @@ fn look_for_horizontal(
         let mut first_y = (position.y / tile_size).trunc() * tile_size;
         if !ray_rotation.is_facing_up() {
             first_y += tile_size;
+        } else {
+            first_y -= 1.0;
         }
 
         let first_x = position.x + (position.y - first_y) / -ray_rotation.tan();
@@ -95,9 +122,9 @@ fn look_for_horizontal(
     } else {
         tile_size
     };
-    let distance_to_next_x = distance_to_next_y * rotation.tan();
+    let distance_to_next_x = distance_to_next_y / ray_rotation.tan();
 
-    canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
+    //canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
 
     Ok(step_ray(
         position,
@@ -125,7 +152,7 @@ fn look_for_vertical(
     rotation: &Rotation,
     map: &Map,
     canvas: &mut Canvas<Window>,
-) -> Result<f32, String> {
+) -> Result<(IntersectionPoint, f32), String> {
     let tile_size = TILE_SIZE as f32;
 
     // Define the first intersection
@@ -136,6 +163,8 @@ fn look_for_vertical(
         // And if the ray is going right, then it's the next grid line
         if !ray_rotation.is_facing_left() {
             first_x += tile_size;
+        } else {
+            first_x -= 1.0;
         }
 
         // tan(θ) = opposite/adjacent
@@ -151,7 +180,7 @@ fn look_for_vertical(
     };
     let distance_to_next_y = distance_to_next_x * ray_rotation.tan();
 
-    canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
+    //canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
 
     Ok(step_ray(
         position,
@@ -172,14 +201,19 @@ fn step_ray(
     map: &Map,
     n: i32,
     canvas: &mut Canvas<Window>,
-) -> f32 {
+) -> (IntersectionPoint, f32) {
     if map.is_blocking_at(intersection.as_grid().to_pair()) {
-        canvas.set_draw_color((200,100,10));
-        canvas.draw_point((intersection.x as i32, intersection.y as i32));
-        return (position.y - intersection.y).hypot(position.x - intersection.x);
+        //canvas.set_draw_color((200, 100, 10));
+        //canvas.draw_point((intersection.x as i32, intersection.y as i32));
+        return (
+            *intersection,
+            (position.y - intersection.y).hypot(position.x - intersection.x),
+        );
     }
-    
-    if n > 500 { return f32::MAX; }
+
+    if n > 500 {
+        return (*intersection, f32::MAX);
+    }
 
     step_ray(
         position,
@@ -196,7 +230,7 @@ fn step_ray(
     )
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct IntersectionPoint {
     pub x: f32,
     pub y: f32,

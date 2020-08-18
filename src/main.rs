@@ -62,7 +62,7 @@ fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_sub = sdl_context.video()?;
 
-    let resulting_resolution = (160, 100);
+    let resulting_resolution = (320, 200);
     let actual_resolution = (960, 600);
     let scale = (
         actual_resolution.0 as f32 / resulting_resolution.0 as f32,
@@ -124,7 +124,7 @@ fn main() -> Result<(), String> {
             let mut mm = app.resources.get_mut::<MouseMotion>().unwrap();
             mm.clear();
         }
-        let mut fov = 60;
+        let mut fov = 66;
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => {
