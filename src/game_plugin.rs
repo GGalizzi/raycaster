@@ -183,6 +183,14 @@ impl Rotation {
         self.degrees() >= 90. && self.degrees() < 270.0
         // self.degrees() >= 90.0 && self.degrees() < 270.0
     }
+
+    pub fn is_straight_horizontal(&self) -> bool {
+        self.degrees() == 180.0 || self.degrees() == 0.0
+    }
+
+    pub fn is_straight_vertical(&self) -> bool {
+        self.degrees() == 90.0 || self.degrees() == 270.0
+    }
 }
 
 fn move_camera(mouse_motion: Res<MouseMotion>, mut rotation: Mut<Rotation>) {

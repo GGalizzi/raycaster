@@ -2,7 +2,7 @@ use sdl2::{render::Canvas, video::Window};
 
 use crate::game_plugin::{Position, Rotation};
 
-const TILE_SIZE: i32 = 16;
+use crate::TILE_SIZE;
 
 pub fn raycast(
     projection_plane: (i32, i32),
@@ -13,6 +13,7 @@ pub fn raycast(
     angle_mod: f32,
     mut debug: bool,
 ) -> Result<(), String> {
+    let mut sections_hitted = Vec::new();
     let map: Map = Map::new();
     let half_fov = Rotation::new(fov as f32 / 2.0);
     let fov = Rotation::new(fov as f32);
@@ -43,10 +44,17 @@ pub fn raycast(
         let relative_angle = Rotation::new(half_fov.degrees() + x as f32 * degrees_per_iteration);
 
         canvas.set_draw_color((120, 120, 120));
-        let horizontal_distance =
-            look_for_horizontal(&ray_rotation, position, rotation, &map, canvas)?;
+        let horizontal_distance = if ray_rotation.is_straight_horizontal() {
+            (IntersectionPoint::default(), f32::MAX)
+        } else {
+            look_for_horizontal(&ray_rotation, position, rotation, &map, canvas)?
+        };
         canvas.set_draw_color((100, 128, 128));
-        let vertical_distance = look_for_vertical(&ray_rotation, position, rotation, &map, canvas)?;
+        let vertical_distance = if ray_rotation.is_straight_vertical() {
+            (IntersectionPoint::default(), f32::MAX)
+        } else {
+            look_for_vertical(&ray_rotation, position, rotation, &map, canvas)?
+        };
 
         // Drawing some debug lines for the rays
         canvas.set_draw_color((20, 50, 20));
@@ -55,8 +63,8 @@ pub fn raycast(
             IntersectionPoint::new(position.x + ray_dir.x, position.y + ray_dir.y, TILE_SIZE);
 
         canvas.draw_line(
-            (position.x as i32, position.y as i32),
-            (some_distance_away.x as i32, some_distance_away.y as i32),
+            (position.x.floor() as i32, position.y.floor() as i32),
+            (some_distance_away.x.floor() as i32, some_distance_away.y.floor() as i32),
         )?;
 
         // Kay, draw the walls now if we hit something
@@ -67,17 +75,20 @@ pub fn raycast(
             (vertical_distance, 'v')
         };
 
-        if closest_hit != f32::MAX {
-            let projected_height = (tile_size / closest_hit * distance_to_plane) as i32;
+        if closest_hit != f32::MAX /*&& !sections_hitted.contains(&intersection.floored())*/ {
+            sections_hitted.push(intersection.floored());
+            let projected_height = (tile_size / closest_hit * distance_to_plane).floor() as i32;
 
-            let mid_point = (projection_plane.1 / 2) as i32;
+            let mid_point = projection_plane.1 / 2;
+            
+            let isRound = intersection.x.floor() == intersection.x && intersection.y.floor() == intersection.y;
 
-            canvas.set_draw_color((100, 155, if side == 'v' { 155 } else { 255 }));
+            canvas.set_draw_color((if isRound { 0 } else { 100 }, 155, if side == 'v' { 155 } else { 255 }));
             canvas.draw_line(
                 (x, mid_point - projected_height / 2),
                 (x, mid_point + projected_height / 2),
             )?;
-            canvas.set_draw_color((220, if side == 'v' { 15 } else { 255 }, 55));
+            canvas.set_draw_color((if isRound { 0 } else { 220 }, if side == 'v' { 15 } else { 255 }, 55));
             canvas.draw_point((intersection.x as i32, intersection.y as i32));
         }
 
@@ -103,9 +114,9 @@ fn look_for_horizontal(
 ) -> Result<(IntersectionPoint, f32), String> {
     let tile_size = TILE_SIZE as f32;
     // Define the first intersection
-    let intersection = {
+    let mut intersection = {
         // The Y of the first intersection is going to be player_position_y / tile_size. And we add one tile_size to that if looking down
-        let mut first_y = (position.y / tile_size).trunc() * tile_size;
+        let mut first_y = (position.y / tile_size).floor() * tile_size;
         if !ray_rotation.is_facing_up() {
             first_y += tile_size;
         } else {
@@ -128,9 +139,10 @@ fn look_for_horizontal(
 
     Ok(step_ray(
         position,
-        &intersection,
+        &mut intersection,
         distance_to_next_x,
         distance_to_next_y,
+        'h',
         map,
         0,
         canvas,
@@ -156,10 +168,10 @@ fn look_for_vertical(
     let tile_size = TILE_SIZE as f32;
 
     // Define the first intersection
-    let intersection = {
+    let mut intersection = {
         // We know the first_x that will be hit because it's
         // the next (or previous) grid line from player position
-        let mut first_x = (position.x / tile_size).trunc() * tile_size;
+        let mut first_x = (position.x / tile_size).floor() * tile_size;
         // And if the ray is going right, then it's the next grid line
         if !ray_rotation.is_facing_left() {
             first_x += tile_size;
@@ -184,9 +196,10 @@ fn look_for_vertical(
 
     Ok(step_ray(
         position,
-        &intersection,
+        &mut intersection,
         distance_to_next_x,
         distance_to_next_y,
+        'v',
         map,
         0,
         canvas,
@@ -195,16 +208,28 @@ fn look_for_vertical(
 
 fn step_ray(
     position: &Position,
-    intersection: &IntersectionPoint,
+    intersection: &mut IntersectionPoint,
     distance_to_next_x: f32,
     distance_to_next_y: f32,
+    side: char,
     map: &Map,
     n: i32,
     canvas: &mut Canvas<Window>,
 ) -> (IntersectionPoint, f32) {
     if map.is_blocking_at(intersection.as_grid().to_pair()) {
-        //canvas.set_draw_color((200, 100, 10));
-        //canvas.draw_point((intersection.x as i32, intersection.y as i32));
+
+        /*
+        if side == 'v' {
+            if (intersection.x / 10.0).trunc() % 2.0 == 1.0 {
+                intersection.x += 1.0;
+            }
+        } else {
+            if (intersection.y / 10.0).trunc() % 2.0 == 1.0 {
+                intersection.y += 1.0;
+            }
+        }
+        */
+
         return (
             *intersection,
             (position.y - intersection.y).hypot(position.x - intersection.x),
@@ -217,20 +242,21 @@ fn step_ray(
 
     step_ray(
         position,
-        &IntersectionPoint::new(
+        &mut IntersectionPoint::new(
             intersection.x + distance_to_next_x,
             intersection.y + distance_to_next_y,
             TILE_SIZE,
         ),
         distance_to_next_x,
         distance_to_next_y,
+        side,
         map,
         n + 1,
         canvas,
     )
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct IntersectionPoint {
     pub x: f32,
     pub y: f32,
@@ -248,14 +274,22 @@ impl IntersectionPoint {
 
     pub fn as_grid(&self) -> IntersectionPoint {
         IntersectionPoint {
-            x: self.x / self.grid_size,
-            y: self.y / self.grid_size,
+            x: (self.x / self.grid_size).floor(),
+            y: (self.y / self.grid_size).floor(),
+            grid_size: 1.0,
+        }
+    }
+    
+    pub fn floored(&self) -> IntersectionPoint {
+        IntersectionPoint {
+            x: self.x.floor(),
+            y: self.y.floor(),
             grid_size: 1.0,
         }
     }
 
     pub fn to_pair(&self) -> (i32, i32) {
-        (self.x as i32, self.y as i32)
+        (self.x.floor() as i32, self.y.floor() as i32)
     }
 
     pub fn out_of_bounds(&self) -> bool {
@@ -263,18 +297,29 @@ impl IntersectionPoint {
     }
 }
 
+impl Default for IntersectionPoint {
+    fn default() -> IntersectionPoint {
+        IntersectionPoint {
+            x: 0.0,
+            y: 0.0,
+            grid_size: 0.0,
+        }
+    }
+}
+
 struct Map {
     tiles: Vec<char>,
     width: i32,
+    height: i32,
 }
 
 impl Map {
     pub fn new() -> Map {
         Map {
             tiles: r#"
+                #################
                 #................
-                #................
-                #................
+                #...#............
                 #................
                 #................
                 #................
@@ -282,21 +327,22 @@ impl Map {
                 ################.
             "#
             .to_owned()
+            .replace('\n', "")
+            .replace(' ', "")
             .chars()
             .collect(),
             width: 17,
+            height: 8,
         }
     }
 
     pub fn is_blocking_at(&self, (x, y): (i32, i32)) -> bool {
-        x == 0 || y == 0 // || (x == 4 && y == 4)
-                         /*
-                         let given_idx = (self.width * y + x) as usize;
-                         if given_idx > 285 {
-                             println!("{:?} {:?} {:?}", self.width, y, x);
-                         }
-                         self.tiles[given_idx] == '#'
-                         */
+        /*x == 1 || y == 1*/// || (x == 4 && y == 4)
+        let given_idx = (self.width * y + x) as usize;
+        if x >= self.height || y >= self.width || given_idx >= self.tiles.len() {
+            return false;
+        }
+        self.tiles[given_idx] == '#'
     }
 
     pub fn out_of_bounds(&self, (x, y): (i32, i32)) -> bool {

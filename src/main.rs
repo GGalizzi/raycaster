@@ -11,6 +11,8 @@ use base_plugin::BasePlugin;
 use game_plugin::{GamePlugin, Player, Position};
 use raycaster::raycast;
 
+pub const TILE_SIZE: i32 = 11;
+
 #[derive(Debug)]
 pub struct MouseMotion {
     x: i32,
@@ -62,7 +64,7 @@ fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_sub = sdl_context.video()?;
 
-    let resulting_resolution = (320, 200);
+    let resulting_resolution = (960/2, 600/2);
     let actual_resolution = (960, 600);
     let scale = (
         actual_resolution.0 as f32 / resulting_resolution.0 as f32,
@@ -167,6 +169,23 @@ fn main() -> Result<(), String> {
             .query::<(&Position, &Player, &game_plugin::Rotation)>()
             .iter()
         {
+            canvas.set_draw_color((200,200,200,80));
+            /*
+            for x in 0..17 {
+                canvas.draw_line(
+                    (x * TILE_SIZE, 0),
+                    (x * TILE_SIZE, resulting_resolution.1)
+                );
+            }
+
+            for y in 0..8 {
+                canvas.draw_line(
+                    (0, y * TILE_SIZE),
+                    (resulting_resolution.0, y * TILE_SIZE),
+                );
+            }
+            */
+
             raycast(
                 resulting_resolution,
                 fov,
