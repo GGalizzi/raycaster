@@ -13,7 +13,6 @@ pub fn raycast(
     angle_mod: f32,
     mut debug: bool,
 ) -> Result<(), String> {
-    let mut sections_hitted = Vec::new();
     let map: Map = Map::new();
     let half_fov = Rotation::new(fov as f32 / 2.0);
     let fov = Rotation::new(fov as f32);
@@ -36,24 +35,16 @@ pub fn raycast(
 
     let tile_size = TILE_SIZE as f32;
     for x in 0..projection_plane.0 {
-        // This is the angle that forms from the viewing direction to the current ray
-        // \  |  /
-        //  \º|º/
-        //   \|/
-        //    p
-        let relative_angle = Rotation::new(half_fov.degrees() + x as f32 * degrees_per_iteration);
 
-        canvas.set_draw_color((120, 120, 120));
         let horizontal_distance = if ray_rotation.is_straight_horizontal() {
             (IntersectionPoint::default(), f32::MAX)
         } else {
-            look_for_horizontal(&ray_rotation, position, rotation, &map, canvas)?
+            look_for_horizontal(&ray_rotation, position, &map, canvas)?
         };
-        canvas.set_draw_color((100, 128, 128));
         let vertical_distance = if ray_rotation.is_straight_vertical() {
             (IntersectionPoint::default(), f32::MAX)
         } else {
-            look_for_vertical(&ray_rotation, position, rotation, &map, canvas)?
+            look_for_vertical(&ray_rotation, position, &map, canvas)?
         };
 
         // Drawing some debug lines for the rays
@@ -68,28 +59,25 @@ pub fn raycast(
         )?;
 
         // Kay, draw the walls now if we hit something
-        //let closest_hit = horizontal_distance.1.min(vertical_distance.1);
         let ((intersection, closest_hit), side) = if horizontal_distance.1 < vertical_distance.1 {
             (horizontal_distance, 'h')
         } else {
             (vertical_distance, 'v')
         };
 
-        if closest_hit != f32::MAX /*&& !sections_hitted.contains(&intersection.floored())*/ {
-            sections_hitted.push(intersection.floored());
-            let projected_height = (tile_size / closest_hit * distance_to_plane).floor() as i32;
+        if closest_hit != f32::MAX {
+            let distance_to_wall = closest_hit * (ray_rotation.radians() - rotation.radians()).cos();
+            let projected_height = (tile_size / distance_to_wall * distance_to_plane).floor() as i32;
 
             let mid_point = projection_plane.1 / 2;
             
-            let isRound = intersection.x.floor() == intersection.x && intersection.y.floor() == intersection.y;
-
-            canvas.set_draw_color((if isRound { 0 } else { 100 }, 155, if side == 'v' { 155 } else { 255 }));
+            canvas.set_draw_color((100, 155, if side == 'v' { 155 } else { 255 }));
             canvas.draw_line(
                 (x, mid_point - projected_height / 2),
                 (x, mid_point + projected_height / 2),
             )?;
-            canvas.set_draw_color((if isRound { 0 } else { 220 }, if side == 'v' { 15 } else { 255 }, 55));
-            canvas.draw_point((intersection.x as i32, intersection.y as i32));
+            canvas.set_draw_color((220, if side == 'v' { 15 } else { 255 }, 55));
+            canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
         }
 
         // Done, next angle
@@ -108,7 +96,6 @@ pub fn raycast(
 fn look_for_horizontal(
     ray_rotation: &Rotation,
     position: &Position,
-    rotation: &Rotation,
     map: &Map,
     canvas: &mut Canvas<Window>,
 ) -> Result<(IntersectionPoint, f32), String> {
@@ -163,7 +150,6 @@ fn look_for_horizontal(
 fn look_for_vertical(
     ray_rotation: &Rotation,
     position: &Position,
-    rotation: &Rotation,
     map: &Map,
     canvas: &mut Canvas<Window>,
 ) -> Result<(IntersectionPoint, f32), String> {
@@ -283,21 +269,9 @@ impl IntersectionPoint {
             grid_size: 1.0,
         }
     }
-    
-    pub fn floored(&self) -> IntersectionPoint {
-        IntersectionPoint {
-            x: self.x.floor(),
-            y: self.y.floor(),
-            grid_size: 1.0,
-        }
-    }
 
     pub fn to_pair(&self) -> (i32, i32) {
         (self.x.floor() as i32, self.y.floor() as i32)
-    }
-
-    pub fn out_of_bounds(&self) -> bool {
-        self.x < 0.0 || self.y < 0.0
     }
 }
 
@@ -347,13 +321,5 @@ impl Map {
             return false;
         }
         self.tiles[given_idx] == '#'
-    }
-
-    pub fn out_of_bounds(&self, (x, y): (i32, i32)) -> bool {
-        if y > 5000 || x > 5000 {
-            println!("xy {:?} {:?}", x, y);
-        }
-        let given_idx = (self.width * y + x) as usize;
-        x < 0 || y < 0 || given_idx >= self.tiles.len()
     }
 }
