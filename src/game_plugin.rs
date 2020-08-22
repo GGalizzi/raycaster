@@ -193,9 +193,9 @@ impl Rotation {
     }
 }
 
-fn move_camera(mouse_motion: Res<MouseMotion>, mut rotation: Mut<Rotation>) {
+fn move_camera(mouse_motion: Res<MouseMotion>, time: Res<Time>, mut rotation: Mut<Rotation>) {
     if mouse_motion.x == 0 {
         return;
     }
-    rotation.add(mouse_motion.x as f32);
+    rotation.add(mouse_motion.x as f32 * time.delta_seconds * 250.0);
 }

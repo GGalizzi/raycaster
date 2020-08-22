@@ -64,8 +64,8 @@ fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_sub = sdl_context.video()?;
 
-    let resulting_resolution = (960/2, 600/2);
-    let actual_resolution = (960, 600);
+    let resulting_resolution = (320, 200);
+    let actual_resolution = (1080, 768);
     let scale = (
         actual_resolution.0 as f32 / resulting_resolution.0 as f32,
         actual_resolution.1 as f32 / resulting_resolution.1 as f32,
@@ -89,6 +89,7 @@ fn main() -> Result<(), String> {
     canvas.set_scale(scale.0, scale.1)?;
 
     sdl_context.mouse().capture(true);
+    sdl_context.mouse().set_relative_mouse_mode(true);
 
     let keypress = Keypress::new();
     let mouse_motion = MouseMotion::new();
@@ -159,32 +160,13 @@ fn main() -> Result<(), String> {
         canvas.set_draw_color((15, 15, 25));
         canvas.clear();
 
-        /*
-        let distance_to_plane = (resulting_resolution.0 / 2) / (fov / 2.0).tan() as i32;
-        let angle_between_rays = fov / resulting_resolution.0 as f32;
-        */
         for (position, _, rotation) in app
             .world
             .query::<(&Position, &Player, &game_plugin::Rotation)>()
             .iter()
         {
-            canvas.set_draw_color((200,200,200,80));
-            /*
-            for x in 0..17 {
-                canvas.draw_line(
-                    (x * TILE_SIZE, 0),
-                    (x * TILE_SIZE, resulting_resolution.1)
-                );
-            }
-
-            for y in 0..8 {
-                canvas.draw_line(
-                    (0, y * TILE_SIZE),
-                    (resulting_resolution.0, y * TILE_SIZE),
-                );
-            }
-            */
-
+            let time = app.resources.get::<Time>().unwrap().delta_seconds;
+            let _fps = 1.0 / time;
             raycast(
                 resulting_resolution,
                 fov,
