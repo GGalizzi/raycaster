@@ -1,4 +1,8 @@
-use sdl2::{render::Canvas, video::Window};
+use sdl2::{
+    rect::Rect,
+    render::{Canvas, Texture},
+    video::Window,
+};
 
 use crate::game_plugin::{Position, Rotation};
 
@@ -10,6 +14,7 @@ pub fn raycast(
     position: &Position,
     rotation: &Rotation,
     canvas: &mut Canvas<Window>,
+    texture: &Texture,
     angle_mod: f32,
     mut debug: bool,
 ) -> Result<(), String> {
@@ -78,6 +83,25 @@ pub fn raycast(
             canvas.draw_line(
                 (x, mid_point - projected_height / 2),
                 (x, mid_point + projected_height / 2),
+            )?;
+            
+            let wall_x = if side == 'h' { intersection.x } else { intersection.y };
+            let tex_x = ((wall_x / tile_size).fract() * texture.query().width as f32) as i32;
+            //let tex_x = texture.query().width as i32 - tex_x - 1;
+            canvas.copy(
+                texture,
+                Rect::new(
+                    tex_x,
+                    0,
+                    1,
+                    texture.query().height,
+                ),
+                Rect::new(
+                    x as i32,
+                    (mid_point - projected_height / 2) as i32,
+                    1_u32,
+                    projected_height as u32,
+                ),
             )?;
             canvas.set_draw_color((220, if side == 'v' { 15 } else { 255 }, 55));
             canvas.draw_point((intersection.x as i32, intersection.y as i32))?;

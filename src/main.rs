@@ -1,6 +1,7 @@
 extern crate sdl2;
 
 use bevy::prelude::*;
+use sdl2::image::{InitFlag, LoadTexture};
 use sdl2::{event::Event, keyboard::Keycode};
 
 mod base_plugin;
@@ -63,6 +64,7 @@ impl Keypress {
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_sub = sdl_context.video()?;
+    let _image_context = sdl2::image::init(InitFlag::PNG);
 
     let resulting_resolution = (320, 200);
     let actual_resolution = (1080, 768);
@@ -79,9 +81,13 @@ fn main() -> Result<(), String> {
 
     let mut canvas = window
         .into_canvas()
+        .accelerated()
         .target_texture()
         .build()
         .map_err(|e| e.to_string())?;
+
+    let texture_creator = canvas.texture_creator();
+    let texture = texture_creator.load_texture("assets/stone_wall.png")?;
 
     canvas.set_draw_color((0, 0, 0));
     canvas.clear();
@@ -173,6 +179,7 @@ fn main() -> Result<(), String> {
                 position,
                 rotation,
                 &mut canvas,
+                &texture,
                 angle_mod,
                 debug,
             )?;
