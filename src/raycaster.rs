@@ -180,8 +180,6 @@ fn look_for_vertical(
     };
     let distance_to_next_y = distance_to_next_x * ray_rotation.tan();
 
-    //canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
-
     Ok(step_ray(
         position,
         &mut intersection,
@@ -215,7 +213,6 @@ fn step_ray(
     if n > 500 {
         return (*intersection, f32::MAX);
     }
-
 
     let nextx = intersection.x + distance_to_next_x;
     let nexty = intersection.y + distance_to_next_y;
@@ -307,7 +304,6 @@ impl Map {
     }
 
     pub fn is_blocking_at(&self, (x, y): (i32, i32)) -> bool {
-        /*x == 1 || y == 1*/// || (x == 4 && y == 4)
         let given_idx = (self.width * y + x) as usize;
         if x >= self.height || y >= self.width || given_idx >= self.tiles.len() {
             return false;

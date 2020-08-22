@@ -185,11 +185,11 @@ impl Rotation {
     }
 
     pub fn is_straight_horizontal(&self) -> bool {
-        self.degrees() == 180.0 || self.degrees() == 0.0
+        self.degrees().round() == 180.0 || self.degrees().round() == 0.0
     }
 
     pub fn is_straight_vertical(&self) -> bool {
-        self.degrees() == 90.0 || self.degrees() == 270.0
+        self.degrees().round() == 90.0 || self.degrees().round() == 270.0
     }
 }
 
