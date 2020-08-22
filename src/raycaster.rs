@@ -51,11 +51,11 @@ pub fn raycast(
         canvas.set_draw_color((20, 50, 20));
         let ray_dir = ray_rotation.direction() * 5.0;
         let some_distance_away =
-            IntersectionPoint::new(position.x + ray_dir.x, position.y + ray_dir.y, TILE_SIZE);
+            (position.x + ray_dir.x, position.y + ray_dir.y);
 
         canvas.draw_line(
             (position.x.floor() as i32, position.y.floor() as i32),
-            (some_distance_away.x.floor() as i32, some_distance_away.y.floor() as i32),
+            (some_distance_away.0.floor() as i32, some_distance_away.1.floor() as i32),
         )?;
 
         // Kay, draw the walls now if we hit something
@@ -100,20 +100,20 @@ fn look_for_horizontal(
     canvas: &mut Canvas<Window>,
 ) -> Result<(IntersectionPoint, f32), String> {
     let tile_size = TILE_SIZE as f32;
-    let mut minusone = false;
     // Define the first intersection
     let mut intersection = {
         // The Y of the first intersection is going to be player_position_y / tile_size. And we add one tile_size to that if looking down
         let mut first_y = (position.y / tile_size).floor() * tile_size;
+        let mut mod_y = 0;
         if !ray_rotation.is_facing_up() {
             first_y += tile_size;
         } else {
-            minusone = true;
+            mod_y -= 1;
         }
 
         let first_x = position.x + (position.y - first_y) / -ray_rotation.tan();
 
-        IntersectionPoint::new(first_x, first_y, TILE_SIZE)
+        IntersectionPoint::new(first_x, first_y, 0, mod_y, TILE_SIZE)
     };
 
     let distance_to_next_y = if ray_rotation.is_facing_up() {
@@ -131,7 +131,6 @@ fn look_for_horizontal(
         distance_to_next_x,
         distance_to_next_y,
         'h',
-        minusone,
         map,
         0,
         canvas,
@@ -155,23 +154,23 @@ fn look_for_vertical(
 ) -> Result<(IntersectionPoint, f32), String> {
     let tile_size = TILE_SIZE as f32;
 
-    let mut minusone = false;
     // Define the first intersection
     let mut intersection = {
         // We know the first_x that will be hit because it's
         // the next (or previous) grid line from player position
         let mut first_x = (position.x / tile_size).floor() * tile_size;
+        let mut mod_x = 0;
         // And if the ray is going right, then it's the next grid line
         if !ray_rotation.is_facing_left() {
             first_x += tile_size;
         } else {
-            minusone = true;
+            mod_x -= 1;
         }
 
         // tan(θ) = opposite/adjacent
         let first_y = position.y + (position.x - first_x) * -ray_rotation.tan();
 
-        IntersectionPoint::new(first_x, first_y, TILE_SIZE)
+        IntersectionPoint::new(first_x, first_y, mod_x, 0, TILE_SIZE)
     };
 
     let distance_to_next_x = if ray_rotation.is_facing_left() {
@@ -189,7 +188,6 @@ fn look_for_vertical(
         distance_to_next_x,
         distance_to_next_y,
         'v',
-        minusone,
         map,
         0,
         canvas,
@@ -202,19 +200,11 @@ fn step_ray(
     distance_to_next_x: f32,
     distance_to_next_y: f32,
     side: char,
-    minusone: bool,
     map: &Map,
     n: i32,
     canvas: &mut Canvas<Window>,
 ) -> (IntersectionPoint, f32) {
-    let mut grid = intersection.as_grid().to_pair();
-    if minusone && side == 'v' {
-        grid.0 -= 1;
-    }
-    if minusone && side == 'h' {
-        grid.1 -= 1;
-    }
-    if map.is_blocking_at(grid) {
+    if map.is_blocking_at(intersection.as_grid_pair()) {
 
         return (
             *intersection,
@@ -234,12 +224,13 @@ fn step_ray(
         &mut IntersectionPoint::new(
             nextx,
             nexty,
+            intersection.mod_x,
+            intersection.mod_y,
             TILE_SIZE,
         ),
         distance_to_next_x,
         distance_to_next_y,
         side,
-        minusone,
         map,
         n + 1,
         canvas,
@@ -250,28 +241,27 @@ fn step_ray(
 struct IntersectionPoint {
     pub x: f32,
     pub y: f32,
+    pub mod_x: i32, // Which grid does this point belong to.
+    pub mod_y: i32,
     grid_size: f32,
 }
 
 impl IntersectionPoint {
-    pub fn new(x: f32, y: f32, grid_size: i32) -> IntersectionPoint {
+    pub fn new(x: f32, y: f32, mod_x: i32, mod_y: i32, grid_size: i32) -> IntersectionPoint {
         IntersectionPoint {
             x,
             y,
+            mod_x,
+            mod_y,
             grid_size: grid_size as f32,
         }
     }
 
-    pub fn as_grid(&self) -> IntersectionPoint {
-        IntersectionPoint {
-            x: (self.x / self.grid_size).floor(),
-            y: (self.y / self.grid_size).floor(),
-            grid_size: 1.0,
-        }
-    }
-
-    pub fn to_pair(&self) -> (i32, i32) {
-        (self.x.floor() as i32, self.y.floor() as i32)
+    pub fn as_grid_pair(&self) -> (i32, i32) {
+        (
+            (self.x / self.grid_size).floor() as i32 + self.mod_x,
+            (self.y / self.grid_size).floor() as i32 + self.mod_y,
+        )
     }
 }
 
@@ -280,6 +270,8 @@ impl Default for IntersectionPoint {
         IntersectionPoint {
             x: 0.0,
             y: 0.0,
+            mod_x: 0,
+            mod_y: 0,
             grid_size: 0.0,
         }
     }
