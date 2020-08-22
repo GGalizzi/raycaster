@@ -70,7 +70,6 @@ fn main() -> Result<(), String> {
         actual_resolution.0 as f32 / resulting_resolution.0 as f32,
         actual_resolution.1 as f32 / resulting_resolution.1 as f32,
     );
-    let plane: (f32, f32) = (0., 0.66);
     let window = video_sub
         .window("sdl2+bevy demo", actual_resolution.0, actual_resolution.1)
         .position_centered()
@@ -126,7 +125,7 @@ fn main() -> Result<(), String> {
             let mut mm = app.resources.get_mut::<MouseMotion>().unwrap();
             mm.clear();
         }
-        let mut fov = 66;
+        let fov = 66;
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => {
@@ -194,10 +193,7 @@ fn main() -> Result<(), String> {
                 &mut canvas,
                 angle_mod,
                 debug,
-            );
-            if debug {
-                debug = false;
-            }
+            )?;
 
             canvas.set_draw_color((185, 66, 66));
             canvas.draw_point((position.x as i32, position.y as i32))?;

@@ -113,6 +113,7 @@ fn look_for_horizontal(
     canvas: &mut Canvas<Window>,
 ) -> Result<(IntersectionPoint, f32), String> {
     let tile_size = TILE_SIZE as f32;
+    let mut minusone = false;
     // Define the first intersection
     let mut intersection = {
         // The Y of the first intersection is going to be player_position_y / tile_size. And we add one tile_size to that if looking down
@@ -120,7 +121,7 @@ fn look_for_horizontal(
         if !ray_rotation.is_facing_up() {
             first_y += tile_size;
         } else {
-            first_y -= 1.0;
+            minusone = true;
         }
 
         let first_x = position.x + (position.y - first_y) / -ray_rotation.tan();
@@ -143,6 +144,7 @@ fn look_for_horizontal(
         distance_to_next_x,
         distance_to_next_y,
         'h',
+        minusone,
         map,
         0,
         canvas,
@@ -167,6 +169,7 @@ fn look_for_vertical(
 ) -> Result<(IntersectionPoint, f32), String> {
     let tile_size = TILE_SIZE as f32;
 
+    let mut minusone = false;
     // Define the first intersection
     let mut intersection = {
         // We know the first_x that will be hit because it's
@@ -176,7 +179,7 @@ fn look_for_vertical(
         if !ray_rotation.is_facing_left() {
             first_x += tile_size;
         } else {
-            first_x -= 1.0;
+            minusone = true;
         }
 
         // tan(θ) = opposite/adjacent
@@ -200,6 +203,7 @@ fn look_for_vertical(
         distance_to_next_x,
         distance_to_next_y,
         'v',
+        minusone,
         map,
         0,
         canvas,
@@ -212,23 +216,19 @@ fn step_ray(
     distance_to_next_x: f32,
     distance_to_next_y: f32,
     side: char,
+    minusone: bool,
     map: &Map,
     n: i32,
     canvas: &mut Canvas<Window>,
 ) -> (IntersectionPoint, f32) {
-    if map.is_blocking_at(intersection.as_grid().to_pair()) {
-
-        /*
-        if side == 'v' {
-            if (intersection.x / 10.0).trunc() % 2.0 == 1.0 {
-                intersection.x += 1.0;
-            }
-        } else {
-            if (intersection.y / 10.0).trunc() % 2.0 == 1.0 {
-                intersection.y += 1.0;
-            }
-        }
-        */
+    let mut grid = intersection.as_grid().to_pair();
+    if minusone && side == 'v' {
+        grid.0 -= 1;
+    }
+    if minusone && side == 'h' {
+        grid.1 -= 1;
+    }
+    if map.is_blocking_at(grid) {
 
         return (
             *intersection,
@@ -240,16 +240,20 @@ fn step_ray(
         return (*intersection, f32::MAX);
     }
 
-    step_ray(
+
+    let nextx = intersection.x + distance_to_next_x;
+    let nexty = intersection.y + distance_to_next_y;
+       step_ray(
         position,
         &mut IntersectionPoint::new(
-            intersection.x + distance_to_next_x,
-            intersection.y + distance_to_next_y,
+            nextx,
+            nexty,
             TILE_SIZE,
         ),
         distance_to_next_x,
         distance_to_next_y,
         side,
+        minusone,
         map,
         n + 1,
         canvas,
