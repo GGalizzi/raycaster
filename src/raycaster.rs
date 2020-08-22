@@ -35,7 +35,6 @@ pub fn raycast(
 
     let tile_size = TILE_SIZE as f32;
     for x in 0..projection_plane.0 {
-
         let horizontal_distance = if ray_rotation.is_straight_horizontal() {
             (IntersectionPoint::default(), f32::MAX)
         } else {
@@ -50,12 +49,14 @@ pub fn raycast(
         // Drawing some debug lines for the rays
         canvas.set_draw_color((20, 50, 20));
         let ray_dir = ray_rotation.direction() * 5.0;
-        let some_distance_away =
-            (position.x + ray_dir.x, position.y + ray_dir.y);
+        let some_distance_away = (position.x + ray_dir.x, position.y + ray_dir.y);
 
         canvas.draw_line(
             (position.x.floor() as i32, position.y.floor() as i32),
-            (some_distance_away.0.floor() as i32, some_distance_away.1.floor() as i32),
+            (
+                some_distance_away.0.floor() as i32,
+                some_distance_away.1.floor() as i32,
+            ),
         )?;
 
         // Kay, draw the walls now if we hit something
@@ -66,11 +67,13 @@ pub fn raycast(
         };
 
         if closest_hit != f32::MAX {
-            let distance_to_wall = closest_hit * (ray_rotation.radians() - rotation.radians()).cos();
-            let projected_height = (tile_size / distance_to_wall * distance_to_plane).floor() as i32;
+            let distance_to_wall =
+                closest_hit * (ray_rotation.radians() - rotation.radians()).cos();
+            let projected_height =
+                (tile_size / distance_to_wall * distance_to_plane).floor() as i32;
 
             let mid_point = projection_plane.1 / 2;
-            
+
             canvas.set_draw_color((100, 155, if side == 'v' { 155 } else { 255 }));
             canvas.draw_line(
                 (x, mid_point - projected_height / 2),
@@ -160,10 +163,11 @@ fn look_for_vertical(
         // the next (or previous) grid line from player position
         let mut first_x = (position.x / tile_size).floor() * tile_size;
         let mut mod_x = 0;
-        // And if the ray is going right, then it's the next grid line
         if !ray_rotation.is_facing_left() {
+            // And if the ray is going right, then it's the next grid line
             first_x += tile_size;
         } else {
+            // Otherwise it's in the same position but it needs to check the grid to the left
             mod_x -= 1;
         }
 
@@ -203,7 +207,6 @@ fn step_ray(
     canvas: &mut Canvas<Window>,
 ) -> (IntersectionPoint, f32) {
     if map.is_blocking_at(intersection.as_grid_pair()) {
-
         return (
             *intersection,
             (position.y - intersection.y).hypot(position.x - intersection.x),
@@ -216,7 +219,7 @@ fn step_ray(
 
     let nextx = intersection.x + distance_to_next_x;
     let nexty = intersection.y + distance_to_next_y;
-       step_ray(
+    step_ray(
         position,
         &mut IntersectionPoint::new(
             nextx,
