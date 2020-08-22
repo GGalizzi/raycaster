@@ -79,15 +79,15 @@ pub fn raycast(
 
             let mid_point = projection_plane.1 / 2;
 
-            canvas.set_draw_color((100, 155, if side == 'v' { 155 } else { 255 }));
+            let color = (if side == 'v' { 750.0 } else { 450.0 } * (1.0 / distance_to_wall.sqrt())) as u8;
+            canvas.set_draw_color((color, color, color));
             canvas.draw_line(
                 (x, mid_point - projected_height / 2),
-                (x, mid_point + projected_height / 2),
+                (x, mid_point + projected_height / 2 - 1),
             )?;
             
             let wall_x = if side == 'h' { intersection.x } else { intersection.y };
             let tex_x = ((wall_x / tile_size).fract() * texture.query().width as f32) as i32;
-            //let tex_x = texture.query().width as i32 - tex_x - 1;
             canvas.copy(
                 texture,
                 Rect::new(

@@ -3,6 +3,7 @@ extern crate sdl2;
 use bevy::prelude::*;
 use sdl2::image::{InitFlag, LoadTexture};
 use sdl2::{event::Event, keyboard::Keycode};
+use sdl2::render::BlendMode;
 
 mod base_plugin;
 mod game_plugin;
@@ -87,12 +88,15 @@ fn main() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     let texture_creator = canvas.texture_creator();
-    let texture = texture_creator.load_texture("assets/stone_wall.png")?;
+    let mut texture = texture_creator.load_texture("assets/stone_wall.png")?;
+    texture.set_blend_mode(BlendMode::Mod);
+    texture.set_alpha_mod(200);
 
     canvas.set_draw_color((0, 0, 0));
     canvas.clear();
     canvas.present();
     canvas.set_scale(scale.0, scale.1)?;
+    canvas.set_blend_mode(BlendMode::Blend);
 
     sdl_context.mouse().capture(true);
     sdl_context.mouse().set_relative_mouse_mode(true);
