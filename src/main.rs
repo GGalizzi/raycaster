@@ -89,8 +89,12 @@ fn main() -> Result<(), String> {
 
     let texture_creator = canvas.texture_creator();
     let mut texture = texture_creator.load_texture("assets/stone_wall.png")?;
+    let mut floor_texture = texture_creator.load_texture("assets/stone_floor.png")?;
     texture.set_blend_mode(BlendMode::Mod);
     texture.set_alpha_mod(200);
+
+    floor_texture.set_blend_mode(BlendMode::Add);
+    floor_texture.set_alpha_mod(50);
 
     canvas.set_draw_color((0, 0, 0));
     canvas.clear();
@@ -184,6 +188,7 @@ fn main() -> Result<(), String> {
                 rotation,
                 &mut canvas,
                 &texture,
+                &floor_texture,
                 angle_mod,
                 debug,
             )?;

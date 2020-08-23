@@ -15,6 +15,7 @@ pub fn raycast(
     rotation: &Rotation,
     canvas: &mut Canvas<Window>,
     texture: &Texture,
+    floor_texture: &Texture,
     angle_mod: f32,
     mut debug: bool,
 ) -> Result<(), String> {
@@ -86,7 +87,7 @@ pub fn raycast(
             canvas.set_draw_color((color, color, color));
             canvas.draw_line(
                 (x, mid_point - projected_height / 2),
-                (x, mid_point + projected_height / 2 - 1),
+                (x, mid_point + projected_height / 2 - 2),
             )?;
 
             let wall_x = if side == 'h' {
@@ -118,7 +119,7 @@ pub fn raycast(
                 distance_to_plane,
                 projection_plane,
                 canvas,
-                &texture,
+                &floor_texture,
             )?;
         }
 
