@@ -2,8 +2,8 @@ extern crate sdl2;
 
 use bevy::prelude::*;
 use sdl2::image::{InitFlag, LoadTexture};
-use sdl2::{event::Event, keyboard::Keycode};
 use sdl2::render::BlendMode;
+use sdl2::{event::Event, keyboard::Keycode};
 
 mod base_plugin;
 mod game_plugin;
@@ -13,7 +13,7 @@ use base_plugin::BasePlugin;
 use game_plugin::{GamePlugin, Player, Position};
 use raycaster::raycast;
 
-pub const TILE_SIZE: i32 = 11;
+pub const TILE_SIZE: i32 = 12;
 
 #[derive(Debug)]
 pub struct MouseMotion {

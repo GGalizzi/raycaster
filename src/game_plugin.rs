@@ -76,7 +76,7 @@ impl Position {
     pub fn move_towards(&self, dir: Direction, dt: f32) -> Position {
         // TODO: Would be a component, or stat or something
         let speed = 320.0;
-        self + dir
+        self + dir * 2.0
     }
 }
 
@@ -91,7 +91,7 @@ impl Plugin for GamePlugin {
 }
 
 fn spawn(mut commands: Commands) {
-    commands.spawn((Position::new(5., 5.), Player, Rotation::new(0.0)));
+    commands.spawn((Position::new(20., 20.), Player, Rotation::new(0.0)));
     println!("should spaned?");
 }
 
@@ -167,6 +167,10 @@ impl Rotation {
 
     pub fn cos(&self) -> f32 {
         self.radians().cos()
+    }
+
+    pub fn sin(&self) -> f32 {
+        self.radians().sin()
     }
 
     pub fn direction(&self) -> Direction {

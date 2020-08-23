@@ -25,7 +25,7 @@ pub fn raycast(
     // using the formula tan(angle) = opposite / adjacent
     // We know the angle, because that's FOV/2
     // We know opposite, because that's projection's plane width / 2
-    let distance_to_plane = (projection_plane.0 / 2) as f32 / half_fov.tan() + angle_mod;
+    let distance_to_plane = (projection_plane.0 / 2) as f32 / half_fov.tan();
 
     // The angle increment between rays is known by the fov. ie, how many steps would you need to fit the plane.
     let degrees_per_iteration = fov.degrees() / projection_plane.0 as f32;
@@ -79,32 +79,47 @@ pub fn raycast(
 
             let mid_point = projection_plane.1 / 2;
 
-            let color = (if side == 'v' { 750.0 } else { 450.0 } * (1.0 / distance_to_wall.sqrt())) as u8;
+            let wall_bottom = mid_point + projected_height / 2;
+            
+            let color =
+                (if side == 'v' { 750.0 } else { 450.0 } * (1.0 / distance_to_wall.sqrt())) as u8;
             canvas.set_draw_color((color, color, color));
             canvas.draw_line(
                 (x, mid_point - projected_height / 2),
                 (x, mid_point + projected_height / 2 - 1),
             )?;
-            
-            let wall_x = if side == 'h' { intersection.x } else { intersection.y };
+
+            let wall_x = if side == 'h' {
+                intersection.x
+            } else {
+                intersection.y
+            };
             let tex_x = ((wall_x / tile_size).fract() * texture.query().width as f32) as i32;
             canvas.copy(
                 texture,
-                Rect::new(
-                    tex_x,
-                    0,
-                    1,
-                    texture.query().height,
-                ),
+                Rect::new(tex_x, 0, 1, texture.query().height),
                 Rect::new(
                     x as i32,
-                    (mid_point - projected_height / 2) as i32,
+                    mid_point - projected_height / 2,
                     1_u32,
                     projected_height as u32,
                 ),
             )?;
             canvas.set_draw_color((220, if side == 'v' { 15 } else { 255 }, 55));
             canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
+
+            let angle = rotation.rotated(-ray_rotation.degrees());
+            floorcast(
+                x,
+                wall_bottom,
+                &position,
+                &ray_rotation,
+                angle,
+                distance_to_plane,
+                projection_plane,
+                canvas,
+                &texture,
+            )?;
         }
 
         // Done, next angle
@@ -237,7 +252,7 @@ fn step_ray(
         );
     }
 
-    if n > 500 {
+    if n > 250 {
         return (*intersection, f32::MAX);
     }
 
@@ -311,30 +326,68 @@ impl Map {
     pub fn new() -> Map {
         Map {
             tiles: r#"
-                #################
-                #................
-                #...#............
-                #................
-                #................
-                #................
-                #................
-                ################.
+                ##################
+                #.............####
+                #.#............###
+                #.............####
+                #.............####
+                #.............####
+                #..............###
+                ##################
             "#
             .to_owned()
             .replace('\n', "")
             .replace(' ', "")
             .chars()
             .collect(),
-            width: 17,
+            width: 18,
             height: 8,
         }
     }
 
     pub fn is_blocking_at(&self, (x, y): (i32, i32)) -> bool {
         let given_idx = (self.width * y + x) as usize;
-        if x >= self.height || y >= self.width || given_idx >= self.tiles.len() {
+        if y > self.height || x > self.width || given_idx >= self.tiles.len() {
             return false;
         }
         self.tiles[given_idx] == '#'
     }
+}
+
+const PLAYER_HEIGHT: i32 = TILE_SIZE / 2;
+pub fn floorcast(
+    x: i32,
+    start: i32,
+    player: &Position,
+    ray: &Rotation,
+    angle: Rotation,
+    distance_to_plane: f32,
+    projection_plane: (i32, i32),
+    canvas: &mut Canvas<Window>,
+    texture: &Texture,
+) -> Result<(), String> {
+    let projection_center = projection_plane.1 / 2;
+    let tile_size = TILE_SIZE as f32;
+    for row in start..projection_plane.1 {
+        let straight_distance =
+            (PLAYER_HEIGHT as f32 / (row - projection_center) as f32) * distance_to_plane as f32;
+        let distance_to_point = straight_distance / angle.cos();
+
+        let ends = (
+            distance_to_point * ray.cos() + player.x,
+            distance_to_point * ray.sin() + player.y,
+        );
+
+        let tex_x = ((ends.0 / tile_size).fract() * texture.query().width as f32) as i32;
+        let tex_y = ((ends.1 / tile_size).fract() * texture.query().height as f32) as i32;
+        canvas.set_draw_color((ends.0 as u8, ends.1 as u8, 80));
+        //canvas.draw_point((x, row))?;
+
+        canvas.copy(
+            texture,
+            Rect::new(tex_x, tex_y, 1, 1),
+            Rect::new(x, row, 1, 1),
+        )?;
+    }
+    Ok(())
 }
