@@ -1,7 +1,9 @@
 use sdl2::{
     rect::Rect,
-    render::{Canvas, Texture},
-    video::Window,
+    pixels::Color,
+    render::{Canvas, Texture, TextureCreator},
+    surface::Surface,
+    video::{Window, WindowContext},
 };
 
 use crate::game_plugin::{Position, Rotation};
@@ -16,9 +18,16 @@ pub fn raycast(
     canvas: &mut Canvas<Window>,
     texture: &Texture,
     floor_texture: &Texture,
+    floor_surface: &Surface,
+    game_surface: &mut Surface,
+    texture_creator: &TextureCreator<WindowContext>,
     angle_mod: f32,
     mut debug: bool,
 ) -> Result<(), String> {
+    game_surface.fill_rect(
+        Rect::new(0, 0, projection_plane.0 as u32, projection_plane.1 as u32),
+        Color::RGB(0, 0, 0),
+    )?;
     let map: Map = Map::new();
     let half_fov = Rotation::new(fov as f32 / 2.0);
     let fov = Rotation::new(fov as f32);
@@ -82,14 +91,11 @@ pub fn raycast(
 
             let wall_bottom = mid_point + projected_height / 2;
             let wall_top = mid_point - projected_height / 2;
-            
+
             let color =
                 (if side == 'v' { 750.0 } else { 450.0 } * (1.0 / distance_to_wall.sqrt())) as u8;
             canvas.set_draw_color((color, color, color));
-            canvas.draw_line(
-                (x, wall_top),
-                (x, wall_bottom - 2),
-            )?;
+            canvas.draw_line((x, wall_top), (x, wall_bottom - 2))?;
 
             let wall_x = if side == 'h' {
                 intersection.x
@@ -100,12 +106,7 @@ pub fn raycast(
             canvas.copy(
                 texture,
                 Rect::new(tex_x, 0, 1, texture.query().height),
-                Rect::new(
-                    x as i32,
-                    wall_top,
-                    1_u32,
-                    projected_height as u32,
-                ),
+                Rect::new(x as i32, wall_top, 1_u32, projected_height as u32),
             )?;
             canvas.set_draw_color((220, if side == 'v' { 15 } else { 255 }, 55));
             canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
@@ -121,10 +122,12 @@ pub fn raycast(
                 projection_plane,
                 canvas,
                 &floor_texture,
+                floor_surface,
+                game_surface,
                 'f',
             )?;
 
-            floorcast(
+            /*floorcast(
                 x,
                 0..wall_top,
                 &position,
@@ -135,12 +138,20 @@ pub fn raycast(
                 canvas,
                 &floor_texture,
                 'c',
-            )?;
+            )?;*/
         }
 
         // Done, next angle
         ray_rotation.add(degrees_per_iteration);
     }
+
+    let game_texture = game_surface.as_texture(texture_creator).unwrap();
+
+    canvas.copy(
+        &game_texture,
+        Rect::new(0, 0, projection_plane.0 as u32, projection_plane.1 as u32),
+        Rect::new(0, 0, projection_plane.0 as u32, projection_plane.1 as u32),
+    )?;
 
     Ok(())
 }
@@ -381,12 +392,18 @@ pub fn floorcast(
     projection_plane: (i32, i32),
     canvas: &mut Canvas<Window>,
     texture: &Texture,
+    floor_surface: &Surface,
+    game_surface: &mut Surface,
     side: char,
 ) -> Result<(), String> {
     let projection_center = projection_plane.1 / 2;
     let tile_size = TILE_SIZE as f32;
     for row in range {
-        let bheight = if side == 'f' { row - projection_center } else { projection_center - row };
+        let bheight = if side == 'f' {
+            row - projection_center
+        } else {
+            projection_center - row
+        };
         let straight_distance =
             (PLAYER_HEIGHT as f32 / (bheight) as f32) * distance_to_plane as f32;
         let distance_to_point = straight_distance / angle.cos();
@@ -399,14 +416,21 @@ pub fn floorcast(
         let tex_x = ((ends.0 / tile_size).fract() * texture.query().width as f32) as i32;
         let tex_y = ((ends.1 / tile_size).fract() * texture.query().height as f32) as i32;
 
-        let color =
-            (500.0 * (1.0 / distance_to_point.sqrt())) as u8;
+        let color = (500.0 * (1.0 / distance_to_point.sqrt())) as u8;
         canvas.set_draw_color((color, color, color));
         canvas.draw_point((x, row))?;
 
+        /*
         canvas.copy(
             texture,
             Rect::new(tex_x, tex_y, 1, 1),
+            Rect::new(x, row, 1, 1),
+        )?;
+        */
+
+        floor_surface.blit(
+            Rect::new(tex_x, tex_y, 1, 1),
+            game_surface,
             Rect::new(x, row, 1, 1),
         )?;
     }

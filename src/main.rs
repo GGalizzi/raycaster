@@ -1,8 +1,9 @@
 extern crate sdl2;
 
 use bevy::prelude::*;
-use sdl2::image::{InitFlag, LoadTexture};
+use sdl2::image::{InitFlag, LoadSurface, LoadTexture};
 use sdl2::render::BlendMode;
+use sdl2::surface::Surface;
 use sdl2::{event::Event, keyboard::Keycode};
 
 mod base_plugin;
@@ -67,7 +68,7 @@ fn main() -> Result<(), String> {
     let video_sub = sdl_context.video()?;
     let _image_context = sdl2::image::init(InitFlag::PNG);
 
-    let resulting_resolution = (320, 200);
+    let resulting_resolution = (320_i32, 200_i32);
     let actual_resolution = (1080, 768);
     let scale = (
         actual_resolution.0 as f32 / resulting_resolution.0 as f32,
@@ -82,7 +83,6 @@ fn main() -> Result<(), String> {
 
     let mut canvas = window
         .into_canvas()
-        .accelerated()
         .target_texture()
         .build()
         .map_err(|e| e.to_string())?;
@@ -92,6 +92,13 @@ fn main() -> Result<(), String> {
     let mut floor_texture = texture_creator.load_texture("assets/stone_floor.png")?;
     texture.set_blend_mode(BlendMode::Mod);
     texture.set_alpha_mod(200);
+
+    let floor_surface = Surface::from_file("assets/stone_floor.png")?;
+    let mut game_surface = Surface::new(
+        resulting_resolution.0 as u32,
+        resulting_resolution.1 as u32,
+        sdl2::pixels::PixelFormatEnum::ARGB8888,
+    )?;
 
     floor_texture.set_blend_mode(BlendMode::Mod);
     floor_texture.set_alpha_mod(200);
@@ -189,6 +196,9 @@ fn main() -> Result<(), String> {
                 &mut canvas,
                 &texture,
                 &floor_texture,
+                &floor_surface,
+                &mut game_surface,
+                &texture_creator,
                 angle_mod,
                 debug,
             )?;
