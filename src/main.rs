@@ -93,8 +93,8 @@ fn main() -> Result<(), String> {
     texture.set_blend_mode(BlendMode::Mod);
     texture.set_alpha_mod(200);
 
-    floor_texture.set_blend_mode(BlendMode::Add);
-    floor_texture.set_alpha_mod(50);
+    floor_texture.set_blend_mode(BlendMode::Mod);
+    floor_texture.set_alpha_mod(200);
 
     canvas.set_draw_color((0, 0, 0));
     canvas.clear();

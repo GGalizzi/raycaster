@@ -81,13 +81,14 @@ pub fn raycast(
             let mid_point = projection_plane.1 / 2;
 
             let wall_bottom = mid_point + projected_height / 2;
+            let wall_top = mid_point - projected_height / 2;
             
             let color =
                 (if side == 'v' { 750.0 } else { 450.0 } * (1.0 / distance_to_wall.sqrt())) as u8;
             canvas.set_draw_color((color, color, color));
             canvas.draw_line(
-                (x, mid_point - projected_height / 2),
-                (x, mid_point + projected_height / 2 - 2),
+                (x, wall_top),
+                (x, wall_bottom - 2),
             )?;
 
             let wall_x = if side == 'h' {
@@ -101,7 +102,7 @@ pub fn raycast(
                 Rect::new(tex_x, 0, 1, texture.query().height),
                 Rect::new(
                     x as i32,
-                    mid_point - projected_height / 2,
+                    wall_top,
                     1_u32,
                     projected_height as u32,
                 ),
@@ -112,7 +113,20 @@ pub fn raycast(
             let angle = rotation.rotated(-ray_rotation.degrees());
             floorcast(
                 x,
-                wall_bottom,
+                wall_bottom..projection_plane.1,
+                &position,
+                &ray_rotation,
+                angle.clone(),
+                distance_to_plane,
+                projection_plane,
+                canvas,
+                &floor_texture,
+                'f',
+            )?;
+
+            floorcast(
+                x,
+                0..wall_top,
                 &position,
                 &ray_rotation,
                 angle,
@@ -120,6 +134,7 @@ pub fn raycast(
                 projection_plane,
                 canvas,
                 &floor_texture,
+                'c',
             )?;
         }
 
@@ -358,7 +373,7 @@ impl Map {
 const PLAYER_HEIGHT: i32 = TILE_SIZE / 2;
 pub fn floorcast(
     x: i32,
-    start: i32,
+    range: std::ops::Range<i32>,
     player: &Position,
     ray: &Rotation,
     angle: Rotation,
@@ -366,12 +381,14 @@ pub fn floorcast(
     projection_plane: (i32, i32),
     canvas: &mut Canvas<Window>,
     texture: &Texture,
+    side: char,
 ) -> Result<(), String> {
     let projection_center = projection_plane.1 / 2;
     let tile_size = TILE_SIZE as f32;
-    for row in start..projection_plane.1 {
+    for row in range {
+        let bheight = if side == 'f' { row - projection_center } else { projection_center - row };
         let straight_distance =
-            (PLAYER_HEIGHT as f32 / (row - projection_center) as f32) * distance_to_plane as f32;
+            (PLAYER_HEIGHT as f32 / (bheight) as f32) * distance_to_plane as f32;
         let distance_to_point = straight_distance / angle.cos();
 
         let ends = (
@@ -381,8 +398,11 @@ pub fn floorcast(
 
         let tex_x = ((ends.0 / tile_size).fract() * texture.query().width as f32) as i32;
         let tex_y = ((ends.1 / tile_size).fract() * texture.query().height as f32) as i32;
-        canvas.set_draw_color((ends.0 as u8, ends.1 as u8, 80));
-        //canvas.draw_point((x, row))?;
+
+        let color =
+            (500.0 * (1.0 / distance_to_point.sqrt())) as u8;
+        canvas.set_draw_color((color, color, color));
+        canvas.draw_point((x, row))?;
 
         canvas.copy(
             texture,
