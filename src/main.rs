@@ -94,6 +94,7 @@ fn main() -> Result<(), String> {
     texture.set_alpha_mod(200);
 
     let floor_surface = Surface::from_file("assets/stone_floor.png")?;
+    let wall_surface = Surface::from_file("assets/stone_wall.png")?;
     let mut game_surface = Surface::new(
         resulting_resolution.0 as u32,
         resulting_resolution.1 as u32,
@@ -194,8 +195,7 @@ fn main() -> Result<(), String> {
                 position,
                 rotation,
                 &mut canvas,
-                &texture,
-                &floor_texture,
+                &wall_surface,
                 &floor_surface,
                 &mut game_surface,
                 &texture_creator,

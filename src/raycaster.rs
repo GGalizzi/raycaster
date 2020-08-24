@@ -16,8 +16,7 @@ pub fn raycast(
     position: &Position,
     rotation: &Rotation,
     canvas: &mut Canvas<Window>,
-    texture: &Texture,
-    floor_texture: &Texture,
+    wall_surface: &Surface,
     floor_surface: &Surface,
     game_surface: &mut Surface,
     texture_creator: &TextureCreator<WindowContext>,
@@ -102,12 +101,20 @@ pub fn raycast(
             } else {
                 intersection.y
             };
-            let tex_x = ((wall_x / tile_size).fract() * texture.query().width as f32) as i32;
-            canvas.copy(
+            let tex_x = ((wall_x / tile_size).fract() * wall_surface.width() as f32) as i32;
+
+            /*canvas.copy(
                 texture,
                 Rect::new(tex_x, 0, 1, texture.query().height),
                 Rect::new(x as i32, wall_top, 1_u32, projected_height as u32),
+            )?;*/
+            
+            wall_surface.blit_scaled(
+                Rect::new(tex_x, 0, 1, wall_surface.height()),
+                game_surface,
+                Rect::new(x as i32, wall_top, 1, projected_height as u32),
             )?;
+
             canvas.set_draw_color((220, if side == 'v' { 15 } else { 255 }, 55));
             canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
 
@@ -121,13 +128,12 @@ pub fn raycast(
                 distance_to_plane,
                 projection_plane,
                 canvas,
-                &floor_texture,
                 floor_surface,
                 game_surface,
                 'f',
             )?;
 
-            /*floorcast(
+            floorcast(
                 x,
                 0..wall_top,
                 &position,
@@ -136,9 +142,10 @@ pub fn raycast(
                 distance_to_plane,
                 projection_plane,
                 canvas,
-                &floor_texture,
+                floor_surface,
+                game_surface,
                 'c',
-            )?;*/
+            )?;
         }
 
         // Done, next angle
@@ -149,8 +156,8 @@ pub fn raycast(
 
     canvas.copy(
         &game_texture,
-        Rect::new(0, 0, projection_plane.0 as u32, projection_plane.1 as u32),
-        Rect::new(0, 0, projection_plane.0 as u32, projection_plane.1 as u32),
+        None,
+        None,
     )?;
 
     Ok(())
@@ -391,7 +398,6 @@ pub fn floorcast(
     distance_to_plane: f32,
     projection_plane: (i32, i32),
     canvas: &mut Canvas<Window>,
-    texture: &Texture,
     floor_surface: &Surface,
     game_surface: &mut Surface,
     side: char,
@@ -413,8 +419,8 @@ pub fn floorcast(
             distance_to_point * ray.sin() + player.y,
         );
 
-        let tex_x = ((ends.0 / tile_size).fract() * texture.query().width as f32) as i32;
-        let tex_y = ((ends.1 / tile_size).fract() * texture.query().height as f32) as i32;
+        let tex_x = ((ends.0 / tile_size).fract() * floor_surface.width() as f32) as i32;
+        let tex_y = ((ends.1 / tile_size).fract() * floor_surface.height() as f32) as i32;
 
         let color = (500.0 * (1.0 / distance_to_point.sqrt())) as u8;
         canvas.set_draw_color((color, color, color));
@@ -428,7 +434,7 @@ pub fn floorcast(
         )?;
         */
 
-        floor_surface.blit(
+        floor_surface.blit_scaled(
             Rect::new(tex_x, tex_y, 1, 1),
             game_surface,
             Rect::new(x, row, 1, 1),
