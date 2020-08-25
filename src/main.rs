@@ -3,6 +3,7 @@ extern crate tetra;
 use bevy::prelude::*;
 
 use tetra::{
+    math::Vec2,
     time,
     graphics,
     graphics::{
@@ -143,6 +144,11 @@ impl State for GameState {
 
     fn draw(&mut self, ctx: &mut Context) -> Result {
         let fov = 66;
+        
+        let fps = graphics::text::Text::new(
+            format!("{}", time::get_fps(ctx)),
+            graphics::text::Font::vector(ctx, "assets/font.ttf", 8.0)?
+        );
 
         graphics::set_canvas(ctx, self.scaler.canvas());
         graphics::clear(ctx, graphics::Color::rgb(0.2, 0., 0.5));
@@ -181,6 +187,7 @@ impl State for GameState {
         }
         graphics::reset_canvas(ctx);
         graphics::draw(ctx, &self.scaler, DrawParams::new());
+        graphics::draw(ctx, &fps, Vec2::new(5.0,50.0));
         Ok(())
     }
 
@@ -210,9 +217,8 @@ impl State for GameState {
 
 fn main() -> tetra::Result {
     ContextBuilder::new("tetra + bevy", actual_resolution.0, actual_resolution.1)
-        .grab_mouse(true)
         .relative_mouse(true)
-        .vsync(false)
+        .vsync(true)
         .build()?
         .run(GameState::new)?;
 
