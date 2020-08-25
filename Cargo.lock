@@ -2494,6 +2494,7 @@ dependencies = [
 [[package]]
 name = "tetra"
 version = "0.4.2"
+source = "git+https://github.com/GGalizzi/tetra?branch=relative-mouse-motion#015a6a907352267e4ec3df44c4049218b0a9f6ae"
 dependencies = [
  "ab_glyph",
  "bytemuck",

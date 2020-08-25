@@ -9,7 +9,7 @@ build = "build.rs"
 
 [dependencies]
 glam = "0.9.3"
-tetra = { path = '../tetra' }
+tetra = { git = 'https://github.com/GGalizzi/tetra', branch= 'relative-mouse-motion' }
 
 [dependencies.bevy]
 git = "https://github.com/bevyengine/bevy"

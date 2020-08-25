@@ -3,6 +3,7 @@ extern crate tetra;
 use bevy::prelude::*;
 
 use tetra::{
+    time,
     graphics,
     graphics::{
         scaling::{ScalingMode, ScreenScaler},
@@ -86,6 +87,7 @@ struct GameState {
 
 impl GameState {
     pub fn new(context: &mut Context) -> Result<GameState> {
+        time::set_timestep(context, time::Timestep::Variable);
         let keypress = Keypress::new();
         let mouse_motion = MouseMotion::new();
         let mut bevy = std::mem::replace(
@@ -113,7 +115,7 @@ impl GameState {
             context,
             resulting_resolution.0,
             resulting_resolution.1,
-            ScalingMode::Stretch,
+            ScalingMode::ShowAll,
         )?;
 
         Ok(GameState {
@@ -127,6 +129,9 @@ impl GameState {
 
 impl State for GameState {
     fn update(&mut self, ctx: &mut Context) -> Result {
+        let _fps = time::get_fps(ctx);
+        
+
         self.bevy.update();
 
         {
@@ -148,8 +153,6 @@ impl State for GameState {
             .query::<(&Position, &Player, &game_plugin::Rotation)>()
             .iter()
         {
-            let time = self.bevy.resources.get::<Time>().unwrap().delta_seconds;
-            let _fps = 1.0 / time;
             raycast(
                 resulting_resolution,
                 fov,
@@ -209,6 +212,7 @@ fn main() -> tetra::Result {
     ContextBuilder::new("tetra + bevy", actual_resolution.0, actual_resolution.1)
         .grab_mouse(true)
         .relative_mouse(true)
+        .vsync(false)
         .build()?
         .run(GameState::new)?;
 
