@@ -1,9 +1,7 @@
-use sdl2::{
-    rect::Rect,
-    pixels::Color,
-    render::{Canvas, Texture, TextureCreator},
-    surface::Surface,
-    video::{Window, WindowContext},
+use tetra::{
+    graphics::{DrawParams, Drawable, Rectangle, Texture},
+    math::Vec2,
+    Context,
 };
 
 use crate::game_plugin::{Position, Rotation};
@@ -15,18 +13,10 @@ pub fn raycast(
     fov: i32,
     position: &Position,
     rotation: &Rotation,
-    canvas: &mut Canvas<Window>,
-    wall_surface: &Surface,
-    floor_surface: &Surface,
-    game_surface: &mut Surface,
-    texture_creator: &TextureCreator<WindowContext>,
-    angle_mod: f32,
-    mut debug: bool,
+    context: &mut Context,
+    wall_texture: &Texture,
+    floor_texture: &Texture,
 ) -> Result<(), String> {
-    game_surface.fill_rect(
-        Rect::new(0, 0, projection_plane.0 as u32, projection_plane.1 as u32),
-        Color::RGB(0, 0, 0),
-    )?;
     let map: Map = Map::new();
     let half_fov = Rotation::new(fov as f32 / 2.0);
     let fov = Rotation::new(fov as f32);
@@ -52,15 +42,16 @@ pub fn raycast(
         let horizontal_distance = if ray_rotation.is_straight_horizontal() {
             (IntersectionPoint::default(), f32::MAX)
         } else {
-            look_for_horizontal(&ray_rotation, position, &map, canvas)?
+            look_for_horizontal(&ray_rotation, position, &map)?
         };
         let vertical_distance = if ray_rotation.is_straight_vertical() {
             (IntersectionPoint::default(), f32::MAX)
         } else {
-            look_for_vertical(&ray_rotation, position, &map, canvas)?
+            look_for_vertical(&ray_rotation, position, &map)?
         };
 
         // Drawing some debug lines for the rays
+        /*
         canvas.set_draw_color((20, 50, 20));
         let ray_dir = ray_rotation.direction() * 5.0;
         let some_distance_away = (position.x + ray_dir.x, position.y + ray_dir.y);
@@ -72,6 +63,7 @@ pub fn raycast(
                 some_distance_away.1.floor() as i32,
             ),
         )?;
+        */
 
         // Kay, draw the walls now if we hit something
         let ((intersection, closest_hit), side) = if horizontal_distance.1 < vertical_distance.1 {
@@ -91,34 +83,52 @@ pub fn raycast(
             let wall_bottom = mid_point + projected_height / 2;
             let wall_top = mid_point - projected_height / 2;
 
+            // Draw fill color of walls
+            /*
             let color =
                 (if side == 'v' { 750.0 } else { 450.0 } * (1.0 / distance_to_wall.sqrt())) as u8;
             canvas.set_draw_color((color, color, color));
             canvas.draw_line((x, wall_top), (x, wall_bottom - 2))?;
+            */
 
+            // Draw wall texture
             let wall_x = if side == 'h' {
                 intersection.x
             } else {
                 intersection.y
             };
-            let tex_x = ((wall_x / tile_size).fract() * wall_surface.width() as f32) as i32;
+            let tex_x = ((wall_x / tile_size).fract() * wall_texture.width() as f32) as i32;
 
             /*canvas.copy(
                 texture,
                 Rect::new(tex_x, 0, 1, texture.query().height),
                 Rect::new(x as i32, wall_top, 1_u32, projected_height as u32),
             )?;*/
-            
-            wall_surface.blit_scaled(
-                Rect::new(tex_x, 0, 1, wall_surface.height()),
-                game_surface,
-                Rect::new(x as i32, wall_top, 1, projected_height as u32),
-            )?;
 
+            wall_texture.draw(
+                context,
+                DrawParams::new()
+                    .position(Vec2::new(x as f32, wall_top as f32))
+                    .scale(Vec2::new(
+                        1.0,
+                        projected_height as f32 / projection_plane.1 as f32,
+                    ))
+                    .clip(Rectangle::new(
+                        tex_x as f32,
+                        0.0,
+                        1.,
+                        wall_texture.height() as f32,
+                    )),
+            );
+
+            // Draw intersection "mini-map"
+            /*
             canvas.set_draw_color((220, if side == 'v' { 15 } else { 255 }, 55));
             canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
+            */
 
             let angle = rotation.rotated(-ray_rotation.degrees());
+            /*
             floorcast(
                 x,
                 wall_bottom..projection_plane.1,
@@ -146,19 +156,12 @@ pub fn raycast(
                 game_surface,
                 'c',
             )?;
+            */
         }
 
         // Done, next angle
         ray_rotation.add(degrees_per_iteration);
     }
-
-    let game_texture = game_surface.as_texture(texture_creator).unwrap();
-
-    canvas.copy(
-        &game_texture,
-        None,
-        None,
-    )?;
 
     Ok(())
 }
@@ -173,7 +176,6 @@ fn look_for_horizontal(
     ray_rotation: &Rotation,
     position: &Position,
     map: &Map,
-    canvas: &mut Canvas<Window>,
 ) -> Result<(IntersectionPoint, f32), String> {
     let tile_size = TILE_SIZE as f32;
     // Define the first intersection
@@ -199,8 +201,6 @@ fn look_for_horizontal(
     };
     let distance_to_next_x = distance_to_next_y / ray_rotation.tan();
 
-    //canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
-
     Ok(step_ray(
         position,
         &mut intersection,
@@ -209,7 +209,6 @@ fn look_for_horizontal(
         'h',
         map,
         0,
-        canvas,
     ))
 }
 
@@ -226,7 +225,6 @@ fn look_for_vertical(
     ray_rotation: &Rotation,
     position: &Position,
     map: &Map,
-    canvas: &mut Canvas<Window>,
 ) -> Result<(IntersectionPoint, f32), String> {
     let tile_size = TILE_SIZE as f32;
 
@@ -265,7 +263,6 @@ fn look_for_vertical(
         'v',
         map,
         0,
-        canvas,
     ))
 }
 
@@ -277,7 +274,6 @@ fn step_ray(
     side: char,
     map: &Map,
     n: i32,
-    canvas: &mut Canvas<Window>,
 ) -> (IntersectionPoint, f32) {
     if map.is_blocking_at(intersection.as_grid_pair()) {
         return (
@@ -306,7 +302,6 @@ fn step_ray(
         side,
         map,
         n + 1,
-        canvas,
     )
 }
 
@@ -362,7 +357,7 @@ impl Map {
             tiles: r#"
                 ##################
                 #.............####
-                #.#............###
+                #..............###
                 #.............####
                 #.............####
                 #.............####
@@ -389,6 +384,7 @@ impl Map {
 }
 
 const PLAYER_HEIGHT: i32 = TILE_SIZE / 2;
+/*
 pub fn floorcast(
     x: i32,
     range: std::ops::Range<i32>,
@@ -442,3 +438,5 @@ pub fn floorcast(
     }
     Ok(())
 }
+
+*/

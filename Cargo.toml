@@ -9,12 +9,7 @@ build = "build.rs"
 
 [dependencies]
 glam = "0.9.3"
+tetra = { path = '../tetra' }
 
 [dependencies.bevy]
 git = "https://github.com/bevyengine/bevy"
-
-[dependencies.sdl2]
-git = "https://github.com/rust-sdl2/rust-sdl2"
-
-default-features = false
-features = ["ttf", "image"]
