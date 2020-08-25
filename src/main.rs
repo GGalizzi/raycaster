@@ -5,9 +5,8 @@ use bevy::prelude::*;
 use tetra::{
     graphics,
     graphics::{
-        DrawParams,
         scaling::{ScalingMode, ScreenScaler},
-        Canvas, Texture,
+        Canvas, DrawParams, Texture,
     },
     input::Key,
     Context, ContextBuilder, Event, Result, State,
@@ -207,15 +206,11 @@ impl State for GameState {
 }
 
 fn main() -> tetra::Result {
-    ContextBuilder::new(
-        "tetra + bevy",
-        actual_resolution.0,
-        actual_resolution.1,
-    )
-    .grab_mouse(true)
-    .relative_mouse(true)
-    .build()?
-    .run(GameState::new)?;
+    ContextBuilder::new("tetra + bevy", actual_resolution.0, actual_resolution.1)
+        .grab_mouse(true)
+        .relative_mouse(true)
+        .build()?
+        .run(GameState::new)?;
 
     //let mut texture = texture_creator.load_texture("assets/stone_wall.png")?;
     //let mut floor_texture = texture_creator.load_texture("assets/stone_floor.png")?;

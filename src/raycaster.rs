@@ -128,7 +128,6 @@ pub fn raycast(
             */
 
             let angle = rotation.rotated(-ray_rotation.degrees());
-            /*
             floorcast(
                 x,
                 wall_bottom..projection_plane.1,
@@ -137,9 +136,8 @@ pub fn raycast(
                 angle.clone(),
                 distance_to_plane,
                 projection_plane,
-                canvas,
-                floor_surface,
-                game_surface,
+                context,
+                floor_texture,
                 'f',
             )?;
 
@@ -151,12 +149,10 @@ pub fn raycast(
                 angle,
                 distance_to_plane,
                 projection_plane,
-                canvas,
-                floor_surface,
-                game_surface,
+                context,
+                floor_texture,
                 'c',
             )?;
-            */
         }
 
         // Done, next angle
@@ -384,7 +380,6 @@ impl Map {
 }
 
 const PLAYER_HEIGHT: i32 = TILE_SIZE / 2;
-/*
 pub fn floorcast(
     x: i32,
     range: std::ops::Range<i32>,
@@ -393,9 +388,8 @@ pub fn floorcast(
     angle: Rotation,
     distance_to_plane: f32,
     projection_plane: (i32, i32),
-    canvas: &mut Canvas<Window>,
-    floor_surface: &Surface,
-    game_surface: &mut Surface,
+    context: &mut Context,
+    floor_texture: &Texture,
     side: char,
 ) -> Result<(), String> {
     let projection_center = projection_plane.1 / 2;
@@ -415,28 +409,22 @@ pub fn floorcast(
             distance_to_point * ray.sin() + player.y,
         );
 
-        let tex_x = ((ends.0 / tile_size).fract() * floor_surface.width() as f32) as i32;
-        let tex_y = ((ends.1 / tile_size).fract() * floor_surface.height() as f32) as i32;
+        let tex_x = ((ends.0 / tile_size).fract() * floor_texture.width() as f32) as i32;
+        let tex_y = ((ends.1 / tile_size).fract() * floor_texture.height() as f32) as i32;
 
+        /*
         let color = (500.0 * (1.0 / distance_to_point.sqrt())) as u8;
         canvas.set_draw_color((color, color, color));
         canvas.draw_point((x, row))?;
-
-        /*
-        canvas.copy(
-            texture,
-            Rect::new(tex_x, tex_y, 1, 1),
-            Rect::new(x, row, 1, 1),
-        )?;
         */
 
-        floor_surface.blit_scaled(
-            Rect::new(tex_x, tex_y, 1, 1),
-            game_surface,
-            Rect::new(x, row, 1, 1),
-        )?;
+        floor_texture.draw(
+            context,
+            DrawParams::new()
+                .position(Vec2::new(x as f32, row as f32))
+                .scale(Vec2::new(1.0, 30. / projection_plane.1 as f32))
+                .clip(Rectangle::new(tex_x as f32, tex_y as f32, 5., 5.)),
+        );
     }
     Ok(())
 }
-
-*/
