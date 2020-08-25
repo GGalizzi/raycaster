@@ -4,7 +4,11 @@ use bevy::prelude::*;
 
 use tetra::{
     graphics,
-    graphics::{Canvas, Texture},
+    graphics::{
+        DrawParams,
+        scaling::{ScalingMode, ScreenScaler},
+        Canvas, Texture,
+    },
     input::Key,
     Context, ContextBuilder, Event, Result, State,
 };
@@ -76,9 +80,9 @@ impl Keypress {
 
 struct GameState {
     bevy: App,
-    canvas: Canvas,
     wall_texture: Texture,
     floor_texture: Texture,
+    scaler: ScreenScaler,
 }
 
 impl GameState {
@@ -104,15 +108,20 @@ impl GameState {
 
         let wall_texture = Texture::new(context, "assets/stone_wall.png")?;
         let floor_texture = Texture::new(context, "assets/stone_floor.png")?;
-        let canvas = Canvas::new(context, resulting_resolution.0, resulting_resolution.1).unwrap();
+        //let canvas = Canvas::new(context, resulting_resolution.0, resulting_resolution.1).unwrap();
 
-        //tetra::graphics::set_canvas(context, &canvas);
+        let scaler = ScreenScaler::with_window_size(
+            context,
+            resulting_resolution.0,
+            resulting_resolution.1,
+            ScalingMode::Stretch,
+        )?;
 
         Ok(GameState {
             bevy,
             wall_texture,
             floor_texture,
-            canvas,
+            scaler,
         })
     }
 }
@@ -131,6 +140,7 @@ impl State for GameState {
     fn draw(&mut self, ctx: &mut Context) -> Result {
         let fov = 66;
 
+        graphics::set_canvas(ctx, self.scaler.canvas());
         graphics::clear(ctx, graphics::Color::rgb(0.2, 0., 0.5));
 
         for (position, _, rotation) in self
@@ -167,6 +177,8 @@ impl State for GameState {
                 (view_point_end.0, view_point_end.1),
             )?;*/
         }
+        graphics::reset_canvas(ctx);
+        graphics::draw(ctx, &self.scaler, DrawParams::new());
         Ok(())
     }
 
@@ -197,8 +209,8 @@ impl State for GameState {
 fn main() -> tetra::Result {
     ContextBuilder::new(
         "tetra + bevy",
-        resulting_resolution.0,
-        resulting_resolution.1,
+        actual_resolution.0,
+        actual_resolution.1,
     )
     .grab_mouse(true)
     .relative_mouse(true)
@@ -207,9 +219,5 @@ fn main() -> tetra::Result {
 
     //let mut texture = texture_creator.load_texture("assets/stone_wall.png")?;
     //let mut floor_texture = texture_creator.load_texture("assets/stone_floor.png")?;
-
-    let mut angle_mod = 0.0;
-    let mut debug = false;
-
     Ok(())
 }
