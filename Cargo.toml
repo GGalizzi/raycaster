@@ -8,6 +8,7 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+png = "0.16.7"
 glam = "0.9.3"
 tetra = { git = 'https://github.com/GGalizzi/tetra', branch= 'relative-mouse-motion' }
 

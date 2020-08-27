@@ -6,7 +6,7 @@ use tetra::{
     graphics,
     graphics::{
         scaling::{ScalingMode, ScreenScaler},
-        Canvas, DrawParams, Texture,
+        Canvas, DrawParams,
     },
     input::Key,
     math::Vec2,
@@ -16,20 +16,17 @@ use tetra::{
 mod base_plugin;
 mod game_plugin;
 mod raycaster;
+mod texture;
 
 use base_plugin::BasePlugin;
 use game_plugin::{GamePlugin, Player, Position};
 use raycaster::raycast;
+use texture::Texture;
 
 pub const TILE_SIZE: i32 = 12;
 
 const resulting_resolution: (i32, i32) = (320, 200);
 const actual_resolution: (i32, i32) = (1080, 768);
-
-const scale: (f32, f32) = (
-    actual_resolution.0 as f32 / resulting_resolution.0 as f32,
-    actual_resolution.1 as f32 / resulting_resolution.1 as f32,
-);
 
 #[derive(Debug)]
 pub struct MouseMotion {
@@ -83,6 +80,7 @@ struct GameState {
     wall_texture: Texture,
     floor_texture: Texture,
     scaler: ScreenScaler,
+    fps: f64,
 }
 
 impl GameState {
@@ -107,8 +105,8 @@ impl GameState {
             &mut bevy.resources,
         );
 
-        let wall_texture = Texture::new(context, "assets/stone_wall.png")?;
-        let floor_texture = Texture::new(context, "assets/stone_floor_b.png")?;
+        let wall_texture = Texture::new(context, "assets/stone_wall.png");
+        let floor_texture = Texture::new(context, "assets/stone_floor_c.png");
         //let canvas = Canvas::new(context, resulting_resolution.0, resulting_resolution.1).unwrap();
 
         let scaler = ScreenScaler::with_window_size(
@@ -123,13 +121,14 @@ impl GameState {
             wall_texture,
             floor_texture,
             scaler,
+            fps: 0.0,
         })
     }
 }
 
 impl State for GameState {
     fn update(&mut self, ctx: &mut Context) -> Result {
-        let _fps = time::get_fps(ctx);
+        self.fps = time::get_fps(ctx);
 
         self.bevy.update();
 
@@ -144,12 +143,12 @@ impl State for GameState {
         let fov = 66;
 
         let fps = graphics::text::Text::new(
-            format!("{}", time::get_fps(ctx)),
+            format!("{}", self.fps),
             graphics::text::Font::vector(ctx, "assets/font.ttf", 8.0)?,
         );
 
         graphics::set_canvas(ctx, self.scaler.canvas());
-        graphics::clear(ctx, graphics::Color::rgb(0.01, 0., 0.05));
+        graphics::clear(ctx, graphics::Color::rgb(0.1568, 0.1746, 0.1568));
 
         for (position, _, rotation) in self
             .bevy
