@@ -3,15 +3,14 @@ extern crate tetra;
 use bevy::prelude::*;
 
 use tetra::{
-    math::Vec2,
-    time,
     graphics,
     graphics::{
         scaling::{ScalingMode, ScreenScaler},
         Canvas, DrawParams, Texture,
     },
     input::Key,
-    Context, ContextBuilder, Event, Result, State,
+    math::Vec2,
+    time, Context, ContextBuilder, Event, Result, State,
 };
 
 mod base_plugin;
@@ -109,7 +108,7 @@ impl GameState {
         );
 
         let wall_texture = Texture::new(context, "assets/stone_wall.png")?;
-        let floor_texture = Texture::new(context, "assets/stone_floor.png")?;
+        let floor_texture = Texture::new(context, "assets/stone_floor_b.png")?;
         //let canvas = Canvas::new(context, resulting_resolution.0, resulting_resolution.1).unwrap();
 
         let scaler = ScreenScaler::with_window_size(
@@ -131,7 +130,6 @@ impl GameState {
 impl State for GameState {
     fn update(&mut self, ctx: &mut Context) -> Result {
         let _fps = time::get_fps(ctx);
-        
 
         self.bevy.update();
 
@@ -144,14 +142,14 @@ impl State for GameState {
 
     fn draw(&mut self, ctx: &mut Context) -> Result {
         let fov = 66;
-        
+
         let fps = graphics::text::Text::new(
             format!("{}", time::get_fps(ctx)),
-            graphics::text::Font::vector(ctx, "assets/font.ttf", 8.0)?
+            graphics::text::Font::vector(ctx, "assets/font.ttf", 8.0)?,
         );
 
         graphics::set_canvas(ctx, self.scaler.canvas());
-        graphics::clear(ctx, graphics::Color::rgb(0.2, 0., 0.5));
+        graphics::clear(ctx, graphics::Color::rgb(0.01, 0., 0.05));
 
         for (position, _, rotation) in self
             .bevy
@@ -187,7 +185,7 @@ impl State for GameState {
         }
         graphics::reset_canvas(ctx);
         graphics::draw(ctx, &self.scaler, DrawParams::new());
-        graphics::draw(ctx, &fps, Vec2::new(5.0,50.0));
+        graphics::draw(ctx, &fps, Vec2::new(5.0, 50.0));
         Ok(())
     }
 

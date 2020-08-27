@@ -395,6 +395,9 @@ pub fn floorcast(
     let projection_center = projection_plane.1 / 2;
     let tile_size = TILE_SIZE as f32;
     for row in range {
+        if (x + row) % 3 < 2 {
+            continue;
+        }
         let bheight = if side == 'f' {
             row - projection_center
         } else {
@@ -403,6 +406,8 @@ pub fn floorcast(
         let straight_distance =
             (PLAYER_HEIGHT as f32 / (bheight) as f32) * distance_to_plane as f32;
         let distance_to_point = straight_distance / angle.cos();
+
+        // if distance_to_point > 60.0 { continue; }
 
         let ends = (
             distance_to_point * ray.cos() + player.x,
@@ -422,8 +427,11 @@ pub fn floorcast(
             context,
             DrawParams::new()
                 .position(Vec2::new(x as f32, row as f32))
-                .scale(Vec2::new(1.0, 30. / projection_plane.1 as f32))
-                .clip(Rectangle::new(tex_x as f32, tex_y as f32, 5., 5.)),
+                .scale(Vec2::new(
+                    20. / projection_plane.0 as f32,
+                    20. / projection_plane.1 as f32,
+                ))
+                .clip(Rectangle::new(tex_x as f32, tex_y as f32, 15., 15.)),
         );
     }
     Ok(())
