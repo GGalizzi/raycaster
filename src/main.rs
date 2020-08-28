@@ -213,7 +213,7 @@ impl State for GameState {
 }
 
 fn main() -> tetra::Result {
-    ContextBuilder::new("tetra + bevy", actual_resolution.0, actual_resolution.1)
+    ContextBuilder::new("tetra + bevy", resulting_resolution.0, resulting_resolution.1)
         .relative_mouse(true)
         .vsync(true)
         .build()?
