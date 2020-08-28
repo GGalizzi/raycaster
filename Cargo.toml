@@ -9,8 +9,15 @@ build = "build.rs"
 
 [dependencies]
 png = "0.16.7"
+pixels = "0.2.0"
 glam = "0.9.3"
-tetra = { git = 'https://github.com/GGalizzi/tetra', branch= 'relative-mouse-motion' }
+# tetra = { git = 'https://github.com/GGalizzi/tetra', branch= 'relative-mouse-motion' }
+
+[dependencies.sdl2]
+git = "https://github.com/rust-sdl2/rust-sdl2"
+
+default-features = false
+features = ["ttf", "image", "raw-window-handle"]
 
 [dependencies.bevy]
 git = "https://github.com/bevyengine/bevy"

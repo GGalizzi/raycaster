@@ -396,7 +396,6 @@ pub fn floorcast(
     let projection_center = projection_plane.1 / 2;
     let tile_size = TILE_SIZE as f32;
     for row in range {
-
         if (x + row) % 3 < 2 {
             continue;
         }
@@ -407,7 +406,7 @@ pub fn floorcast(
         };
         let straight_distance =
             (PLAYER_HEIGHT as f32 / (bheight) as f32) * distance_to_plane as f32;
-            
+
         let distance_to_point = straight_distance / angle.cos();
 
         // if distance_to_point > 70.0 { continue; }
@@ -419,9 +418,9 @@ pub fn floorcast(
 
         let tex_x = ((ends.0 / tile_size).fract() * floor_texture.width() as f32) as i32;
         let tex_y = ((ends.1 / tile_size).fract() * floor_texture.height() as f32) as i32;
-        
-        if floor_texture.color_at(tex_x, tex_y) == (65,70,67) { 
-            continue; 
+
+        if floor_texture.color_at(tex_x, tex_y) == (65, 70, 67) {
+            continue;
         }
 
         /*
@@ -434,13 +433,10 @@ pub fn floorcast(
             context,
             DrawParams::new()
                 .position(Vec2::new(x as f32, row as f32))
-                .scale(Vec2::new(
-                    0.1,
-                    0.1,
-                ))
+                .scale(Vec2::new(0.1, 0.1))
                 .clip(Rectangle::new(tex_x as f32, tex_y as f32, 6., 6.)),
         );
     }
-    
+
     Ok(())
 }

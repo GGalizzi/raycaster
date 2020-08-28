@@ -1,26 +1,17 @@
-extern crate tetra;
-
 use bevy::prelude::*;
-
-use tetra::{
-    graphics,
-    graphics::{
-        scaling::{ScalingMode, ScreenScaler},
-        Canvas, DrawParams,
-    },
-    input::Key,
-    math::Vec2,
-    time, Context, ContextBuilder, Event, Result, State,
-};
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
 
 mod base_plugin;
+mod game;
 mod game_plugin;
-mod raycaster;
+//mod raycaster;
 mod texture;
 
 use base_plugin::BasePlugin;
+use game::Game;
 use game_plugin::{GamePlugin, Player, Position};
-use raycaster::raycast;
+//use raycaster::raycast;
 use texture::Texture;
 
 pub const TILE_SIZE: i32 = 12;
@@ -39,9 +30,9 @@ impl MouseMotion {
         MouseMotion { x: 0, y: 0 }
     }
 
-    pub fn set(&mut self, x: f32, y: f32) {
-        self.x = x as i32;
-        self.y = y as i32;
+    pub fn set(&mut self, x: i32, y: i32) {
+        self.x = x;
+        self.y = y;
     }
 
     pub fn clear(&mut self) {
@@ -51,7 +42,7 @@ impl MouseMotion {
 }
 
 pub struct Keypress {
-    val: Option<Key>,
+    val: Option<Keycode>,
 }
 
 impl Keypress {
@@ -59,11 +50,11 @@ impl Keypress {
         Keypress { val: None }
     }
 
-    fn set(&mut self, ch: Key) {
+    fn set(&mut self, ch: Keycode) {
         self.val = Some(ch);
     }
 
-    fn is(&self, ch: Key) -> bool {
+    fn is(&self, ch: Keycode) -> bool {
         if let Some(cur_ch) = &self.val {
             return *cur_ch == ch;
         }
@@ -79,13 +70,12 @@ struct GameState {
     bevy: App,
     wall_texture: Texture,
     floor_texture: Texture,
-    scaler: ScreenScaler,
     fps: f64,
 }
 
 impl GameState {
-    pub fn new(context: &mut Context) -> Result<GameState> {
-        time::set_timestep(context, time::Timestep::Variable);
+    pub fn new() -> Result<GameState, String> {
+        //time::set_timestep(context, time::Timestep::Variable);
         let keypress = Keypress::new();
         let mouse_motion = MouseMotion::new();
         let mut bevy = std::mem::replace(
@@ -105,30 +95,28 @@ impl GameState {
             &mut bevy.resources,
         );
 
-        let wall_texture = Texture::new(context, "assets/stone_wall.png");
-        let floor_texture = Texture::new(context, "assets/stone_floor_c.png");
+        let wall_texture = Texture::new("assets/stone_wall.png");
+        let floor_texture = Texture::new("assets/stone_floor_c.png");
         //let canvas = Canvas::new(context, resulting_resolution.0, resulting_resolution.1).unwrap();
-
-        let scaler = ScreenScaler::with_window_size(
-            context,
-            resulting_resolution.0,
-            resulting_resolution.1,
-            ScalingMode::ShowAll,
-        )?;
 
         Ok(GameState {
             bevy,
             wall_texture,
             floor_texture,
-            scaler,
             fps: 0.0,
         })
     }
 }
 
+pub trait State {
+    fn update(&mut self) -> Result<(), String>;
+    fn draw(&mut self, buf: &mut [u8]) -> Result<(), String>;
+    fn event(&mut self, event: Event) -> Result<(), String>;
+}
+
 impl State for GameState {
-    fn update(&mut self, ctx: &mut Context) -> Result {
-        self.fps = time::get_fps(ctx);
+    fn update(&mut self) -> Result<(), String> {
+        //self.fps = time::get_fps(ctx);
 
         self.bevy.update();
 
@@ -139,9 +127,10 @@ impl State for GameState {
         Ok(())
     }
 
-    fn draw(&mut self, ctx: &mut Context) -> Result {
+    fn draw(&mut self, buf: &mut [u8]) -> Result<(), String> {
         let fov = 66;
 
+        /*
         let fps = graphics::text::Text::new(
             format!("{}", self.fps),
             graphics::text::Font::vector(ctx, "assets/font.ttf", 8.0)?,
@@ -149,6 +138,7 @@ impl State for GameState {
 
         graphics::set_canvas(ctx, self.scaler.canvas());
         graphics::clear(ctx, graphics::Color::rgb(0.1568, 0.1746, 0.1568));
+        */
 
         for (position, _, rotation) in self
             .bevy
@@ -156,7 +146,13 @@ impl State for GameState {
             .query::<(&Position, &Player, &game_plugin::Rotation)>()
             .iter()
         {
-            raycast(
+
+            buf.chunks_exact_mut(4)
+                .nth(320 * position.y as usize + position.x as usize)
+                .unwrap()
+                .copy_from_slice(&[0x5e, 0x48, 0xe8, 0xff]);
+
+            /*raycast(
                 resulting_resolution,
                 fov,
                 position,
@@ -165,7 +161,7 @@ impl State for GameState {
                 &self.wall_texture,
                 &self.floor_texture,
             )
-            .expect("Failed raycasting");
+            .expect("Failed raycasting");*/
 
             /*
             canvas.set_draw_color((185, 66, 66));
@@ -182,28 +178,32 @@ impl State for GameState {
                 (view_point_end.0, view_point_end.1),
             )?;*/
         }
+
+        /*
         graphics::reset_canvas(ctx);
         graphics::draw(ctx, &self.scaler, DrawParams::new());
         graphics::draw(ctx, &fps, Vec2::new(5.0, 50.0));
+        */
         Ok(())
     }
 
-    fn event(&mut self, ctx: &mut Context, event: Event) -> Result {
+    fn event(&mut self, event: Event) -> Result<(), String> {
         match event {
-            Event::KeyPressed { key } => {
-                let mut kp = self.bevy.resources.get_mut::<Keypress>().unwrap();
-                kp.set(key);
+            Event::KeyDown { keycode, .. } => {
+                if let Some(kc) = keycode {
+                    let mut kp = self.bevy.resources.get_mut::<Keypress>().unwrap();
+                    kp.set(kc);
+                }
             }
-            Event::KeyReleased { .. } => {
-                let mut kp = self.bevy.resources.get_mut::<Keypress>().unwrap();
-                kp.clear();
+            Event::KeyUp { keycode, .. } => {
+                if let Some(kc) = keycode {
+                    let mut kp = self.bevy.resources.get_mut::<Keypress>().unwrap();
+                    kp.clear();
+                }
             }
-            Event::MouseMoved {
-                relative_position: tetra::math::Vec2 { x, y },
-                ..
-            } => {
+            Event::MouseMotion { xrel, yrel, .. } => {
                 let mut mm = self.bevy.resources.get_mut::<MouseMotion>().unwrap();
-                mm.set(x, y);
+                mm.set(xrel, yrel);
             }
             _ => {}
         };
@@ -212,12 +212,8 @@ impl State for GameState {
     }
 }
 
-fn main() -> tetra::Result {
-    ContextBuilder::new("tetra + bevy", actual_resolution.0, actual_resolution.1)
-        .relative_mouse(true)
-        .vsync(true)
-        .build()?
-        .run(GameState::new)?;
+fn main() -> Result<(), String> {
+    Game::new("tetra + bevy", actual_resolution.0, actual_resolution.1)?.run(GameState::new)?;
 
     //let mut texture = texture_creator.load_texture("assets/stone_wall.png")?;
     //let mut floor_texture = texture_creator.load_texture("assets/stone_floor.png")?;
