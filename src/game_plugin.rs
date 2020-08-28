@@ -77,7 +77,7 @@ impl Position {
         let speed = 320.0;
 
         println!("prep {:?}", self);
-        self + dir * 2.0 
+        self + dir * 2.0
     }
 }
 

@@ -1,9 +1,3 @@
-use tetra::{
-    graphics::{DrawParams, Rectangle},
-    math::Vec2,
-    Context,
-};
-
 use crate::game_plugin::{Position, Rotation};
 use crate::texture::Texture;
 
@@ -14,7 +8,7 @@ pub fn raycast(
     fov: i32,
     position: &Position,
     rotation: &Rotation,
-    context: &mut Context,
+    pixels: &mut [u8],
     wall_texture: &Texture,
     floor_texture: &Texture,
 ) -> Result<(), String> {
@@ -100,12 +94,15 @@ pub fn raycast(
             };
             let tex_x = ((wall_x / tile_size).fract() * wall_texture.width() as f32) as i32;
 
+            floor_texture.draw_strip_at(x, wall_top, wall_bottom, pixels);
+
             /*canvas.copy(
                 texture,
                 Rect::new(tex_x, 0, 1, texture.query().height),
                 Rect::new(x as i32, wall_top, 1_u32, projected_height as u32),
             )?;*/
 
+            /*
             wall_texture.draw(
                 context,
                 DrawParams::new()
@@ -121,6 +118,7 @@ pub fn raycast(
                         wall_texture.height() as f32,
                     )),
             );
+            */
 
             // Draw intersection "mini-map"
             /*
@@ -129,6 +127,7 @@ pub fn raycast(
             */
 
             let angle = rotation.rotated(-ray_rotation.degrees());
+            /*
             floorcast(
                 x,
                 wall_bottom..projection_plane.1,
@@ -154,6 +153,7 @@ pub fn raycast(
                 floor_texture,
                 'c',
             )?;
+            */
         }
 
         // Done, next angle
@@ -380,6 +380,7 @@ impl Map {
     }
 }
 
+/*
 const PLAYER_HEIGHT: i32 = TILE_SIZE / 2;
 pub fn floorcast(
     x: i32,
@@ -440,3 +441,5 @@ pub fn floorcast(
 
     Ok(())
 }
+
+*/

@@ -35,4 +35,23 @@ impl Texture {
     pub fn height(&self) -> i32 {
         self.height as i32
     }
+
+    pub fn draw_strip_at(&self, x: i32, mut top: i32, mut bottom: i32, buf: &mut [u8]) {
+        //self.data.chunks_exact(3)
+
+        if top < 0 { top = 0; }
+        if bottom > 200 { bottom = 200; }
+
+        // TODO: Replace 320 by a width being passed
+        for (i, pixel) in buf
+            .chunks_exact_mut(4)
+            .enumerate()
+            .skip(320 * top as usize)
+            .skip(x as usize)
+            .step_by(320)
+        {
+            if (i / 320) > bottom as usize { break; }
+            pixel.copy_from_slice(&[0xff, 0x00, 0x00, 0x2f]);
+        }
+    }
 }

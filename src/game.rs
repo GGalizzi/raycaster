@@ -58,6 +58,7 @@ impl Game {
 
             state.update()?;
 
+            self.pixels.get_frame().copy_from_slice(&[0x00; 320*200*4]);
             state.draw(self.pixels.get_frame())?;
             self.pixels.render().map_err(|e| e.to_string())?;
         }

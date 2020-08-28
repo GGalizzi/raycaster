@@ -5,13 +5,13 @@ use sdl2::keyboard::Keycode;
 mod base_plugin;
 mod game;
 mod game_plugin;
-//mod raycaster;
+mod raycaster;
 mod texture;
 
 use base_plugin::BasePlugin;
 use game::Game;
 use game_plugin::{GamePlugin, Player, Position};
-//use raycaster::raycast;
+use raycaster::raycast;
 use texture::Texture;
 
 pub const TILE_SIZE: i32 = 12;
@@ -146,22 +146,21 @@ impl State for GameState {
             .query::<(&Position, &Player, &game_plugin::Rotation)>()
             .iter()
         {
-
             buf.chunks_exact_mut(4)
                 .nth(320 * position.y as usize + position.x as usize)
                 .unwrap()
                 .copy_from_slice(&[0x5e, 0x48, 0xe8, 0xff]);
 
-            /*raycast(
+            raycast(
                 resulting_resolution,
                 fov,
                 position,
                 rotation,
-                ctx,
+                buf,
                 &self.wall_texture,
                 &self.floor_texture,
             )
-            .expect("Failed raycasting");*/
+            .expect("Failed raycasting");
 
             /*
             canvas.set_draw_color((185, 66, 66));
