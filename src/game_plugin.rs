@@ -76,7 +76,6 @@ impl Position {
         // TODO: Would be a component, or stat or something
         let speed = 320.0;
 
-        println!("prep {:?}", self);
         self + dir * 2.0
     }
 }
@@ -93,7 +92,6 @@ impl Plugin for GamePlugin {
 
 fn spawn(mut commands: Commands) {
     commands.spawn((Position::new(30., 30.), Player, Rotation::new(0.0)));
-    println!("should spaned?");
 }
 
 fn movement(
@@ -203,5 +201,4 @@ fn move_camera(mouse_motion: Res<MouseMotion>, time: Res<Time>, mut rotation: Mu
         return;
     }
     rotation.add(mouse_motion.x as f32 * time.delta_seconds * 250.0);
-    println!("rotation.deg {:?}", rotation.degrees());
 }

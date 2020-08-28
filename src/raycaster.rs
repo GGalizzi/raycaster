@@ -94,7 +94,7 @@ pub fn raycast(
             };
             let tex_x = ((wall_x / tile_size).fract() * wall_texture.width() as f32) as i32;
 
-            floor_texture.draw_strip_at(x, wall_top, wall_bottom, pixels);
+            wall_texture.draw_strip_at(x, tex_x, wall_top, wall_bottom, pixels);
 
             /*canvas.copy(
                 texture,
