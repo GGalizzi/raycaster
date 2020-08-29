@@ -95,16 +95,11 @@ impl Game {
                 font_surface.with_lock(|data| {
                     for x in 0..font_surface.width() {
                         for y in 0..font_surface.height() {
-                            let dst = buf
-                                .chunks_exact_mut(4)
-                                .skip(y as usize * 320)
-                                .skip(x as usize)
-                                .next();
-                            let src = data
-                                .chunks_exact(4)
-                                .skip(y as usize * font_surface.width() as usize)
-                                .skip(x as usize)
-                                .next();
+                            let dst_idx = (((320 * y) + x) * 4) as usize;
+                            let dst = buf.get_mut(dst_idx..dst_idx+4);
+                            
+                            let src_idx = (((font_surface.width() * y) + x) * 4) as usize;
+                            let src = data.get(src_idx..src_idx+4);
 
                             if let Some(dst) = dst {
                                 if let Some(src) = src {

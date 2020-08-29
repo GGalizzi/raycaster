@@ -25,6 +25,7 @@ impl Texture {
     pub fn color_at(&self, x: i32, y: i32) -> (u8, u8, u8) {
         let idx = ((self.width as i32 * y + x) * 3) as usize;
         let d = &self.data;
+        if idx >= d.len() { return (0,0,0); }
         (d[idx], d[idx + 1], d[idx + 2])
     }
 
@@ -53,9 +54,25 @@ impl Texture {
             self.copy_to(tex_x, tex_y as i32, x, screen_y as i32, buf)
         }
     }
+}
 
-    pub fn copy_to(&self, tex_x: i32, tex_y: i32, x: i32, y: i32, buf: &mut [u8]) {
+impl Drawable for Texture {
+    fn copy_to(&self, tex_x: i32, tex_y: i32, x: i32, y: i32, buf: &mut [u8]) {
         let (r, g, b) = self.color_at(tex_x, tex_y);
+        
+        let idx = ((320 * y + x) * 4) as usize;
+        if idx >= buf.len() { return; }
+        buf[idx..idx+4].copy_from_slice(&[r,g,b,0xff]);
+    }
+}
+
+pub trait Drawable {
+    fn copy_to(&self, tex_x: i32, tex_y: i32, x: i32, y: i32, buf: &mut [u8]);
+}
+
+impl Drawable for &[u8; 3] {
+    fn copy_to(&self, _tex_x: i32, _tex_y: i32, x: i32, y: i32, buf: &mut [u8]) {
+        let (r,g,b) = (self[0], self[1], self[2]);
 
         if let Some(dst) = buf
             .chunks_exact_mut(4)

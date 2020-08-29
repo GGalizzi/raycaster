@@ -1,5 +1,5 @@
 use crate::game_plugin::{Position, Rotation};
-use crate::texture::Texture;
+use crate::texture::{Drawable, Texture};
 
 use crate::TILE_SIZE;
 
@@ -358,6 +358,16 @@ impl Map {
                 #.............####
                 #.............####
                 #..............###
+                #..............###
+                #..............###
+                #..............###
+                #..............###
+                #..............###
+                #..............###
+                #..............###
+                #..............###
+                #..............###
+                #..............###
                 ##################
             "#
             .to_owned()
@@ -366,7 +376,7 @@ impl Map {
             .chars()
             .collect(),
             width: 18,
-            height: 8,
+            height: 18,
         }
     }
 
@@ -394,10 +404,14 @@ pub fn floorcast(
 ) -> Result<(), String> {
     let projection_center = projection_plane.1 / 2;
     let tile_size = TILE_SIZE as f32;
+    
     for row in range {
+        /*
         if (x + row) % 3 < 2 {
             continue;
         }
+        */
+
         let bheight = if side == 'f' {
             row - projection_center
         } else {
@@ -408,7 +422,19 @@ pub fn floorcast(
 
         let distance_to_point = straight_distance / angle.cos();
 
-        // if distance_to_point > 70.0 { continue; }
+        let skip_every = (distance_to_point).round() as i32;
+
+        if (x + row) % skip_every > 2 {
+            let color = &[20,0x00,0x00];
+            //color.copy_to(0,0,x,row,pixels);
+            //continue;
+        }
+
+        /*
+        if distance_to_point > 72. && (x + row) % 2 == 0 {
+            continue;
+        }
+        */
 
         let ends = (
             distance_to_point * ray.cos() + player.x,
@@ -422,34 +448,7 @@ pub fn floorcast(
             continue;
         }
 
-        /*
-        let color = (500.0 * (1.0 / distance_to_point.sqrt())) as u8;
-        canvas.set_draw_color((color, color, color));
-        canvas.draw_point((x, row))?;
-        */
-
         floor_texture.copy_to(tex_x, tex_y, x, row, pixels);
-        /*
-        let dst = pixels
-            .chunks_exact_mut(4)
-            .skip(row as usize * projection_plane.0 as usize)
-            .skip(x as usize)
-            .next();
-
-        if let Some(dst) = dst {
-            dst.copy_from_slice(&[50, 50, 80, 255])
-        }
-        */
-
-        /*
-        floor_texture.draw(
-            context,
-            DrawParams::new()
-                .position(Vec2::new(x as f32, row as f32))
-                .scale(Vec2::new(0.1, 0.1))
-                .clip(Rectangle::new(tex_x as f32, tex_y as f32, 6., 6.)),
-        );
-        */
     }
 
     Ok(())
