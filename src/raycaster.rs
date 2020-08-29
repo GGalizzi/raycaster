@@ -396,7 +396,7 @@ pub fn floorcast(
     let tile_size = TILE_SIZE as f32;
     for row in range {
         if (x + row) % 3 < 2 {
-            //continue;
+            continue;
         }
         let bheight = if side == 'f' {
             row - projection_center

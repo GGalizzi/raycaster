@@ -48,7 +48,7 @@ impl Game {
         F: FnOnce() -> Result<S, String>,
     {
         let mut state = init()?;
-        let font = self.ttf_context.load_font("assets/font.ttf", 68)?;
+        let font = self.ttf_context.load_font("assets/font.ttf", 18)?;
 
         let mut last = Instant::now();
         'game: loop {
@@ -78,7 +78,7 @@ impl Game {
                 let buf = self.pixels.get_frame();
                 let font_surface = font
                     .render(&format!("{:.0}", fps))
-                    .solid((0, 0, 255, 255))
+                    .blended((0, 0, 255, 255))
                     .map_err(|e| e.to_string())?;
                 let pitch = font_surface.pitch();
                 font_surface.with_lock(|data| {

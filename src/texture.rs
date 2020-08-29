@@ -50,22 +50,7 @@ impl Texture {
             if screen_y > 200 {
                 continue;
             }
-            if let Some(pixel) = self
-                .data
-                .chunks_exact(3)
-                .skip(tex_y * self.width as usize)
-                .skip(tex_x as usize)
-                .next()
-            {
-                if let Some(screen_slice) = buf
-                    .chunks_exact_mut(4)
-                    .skip(screen_y * 320)
-                    .skip(x as usize)
-                    .next()
-                {
-                    screen_slice.copy_from_slice(&[pixel[0], pixel[1], pixel[2], 0xff]);
-                }
-            }
+            self.copy_to(tex_x, tex_y as i32, x, screen_y as i32, buf)
         }
     }
 
