@@ -1,8 +1,9 @@
-use bevy::prelude::*;
+use bevy::prelude::App;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
 mod base_plugin;
+mod font;
 mod game;
 mod game_plugin;
 mod raycaster;
@@ -116,8 +117,6 @@ pub trait State {
 
 impl State for GameState {
     fn update(&mut self) -> Result<(), String> {
-        self.fps = self.bevy.resources.get::<Time>().unwrap().delta_seconds_f64;
-
         self.bevy.update();
 
         {
@@ -212,7 +211,9 @@ impl State for GameState {
 }
 
 fn main() -> Result<(), String> {
-    Game::new("tetra + bevy", actual_resolution.0, actual_resolution.1)?.run(GameState::new)?;
+    let mut game = Game::new("tetra + bevy", actual_resolution.0, actual_resolution.1)?;
+
+    game.run(GameState::new)?;
 
     //let mut texture = texture_creator.load_texture("assets/stone_wall.png")?;
     //let mut floor_texture = texture_creator.load_texture("assets/stone_floor.png")?;

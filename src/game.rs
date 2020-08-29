@@ -7,12 +7,13 @@ use sdl2::video::Window;
 use sdl2::EventPump;
 use std::time::Instant;
 
+use crate::font::Font;
 use crate::State;
 
 pub struct Game {
     pixels: Pixels<Window>,
     event_pump: EventPump,
-    ttf_context: sdl2::ttf::Sdl2TtfContext,
+    font_manager: Font,
     _window: Window,
 }
 
@@ -24,6 +25,7 @@ impl Game {
         sdl_context.mouse().set_relative_mouse_mode(true);
 
         let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
+        let font_manager = Font::new(ttf_context);
 
         let window = video_sub
             .window(window_title, resolution_x, resolution_y)
@@ -48,7 +50,7 @@ impl Game {
         Ok(Game {
             pixels,
             event_pump,
-            ttf_context,
+            font_manager,
             _window: window,
         })
     }
@@ -59,7 +61,8 @@ impl Game {
         F: FnOnce() -> Result<S, String>,
     {
         let mut state = init()?;
-        let font = self.ttf_context.load_font("assets/font.ttf", 18)?;
+        // let font = self.ttf_context.load_font("assets/font.ttf", 18)?;
+        let font = self.font_manager.build("assets/font.ttf", 18)?;
 
         let mut last = Instant::now();
         'game: loop {
@@ -85,33 +88,8 @@ impl Game {
             //.copy_from_slice(&[0x00; 320 * 200 * 4]);
             state.draw(self.pixels.get_frame())?;
 
-            {
-                let buf = self.pixels.get_frame();
-                let font_surface = font
-                    .render(&format!("{:.0}", fps))
-                    .blended((0, 0, 255, 255))
-                    .map_err(|e| e.to_string())?;
-                font_surface.with_lock(|data| {
-                    for x in 0..font_surface.width() {
-                        for y in 0..font_surface.height() {
-                            let dst_idx = (((320 * y) + x) * 4) as usize;
-                            let dst = buf.get_mut(dst_idx..dst_idx+4);
-                            
-                            let src_idx = (((font_surface.width() * y) + x) * 4) as usize;
-                            let src = data.get(src_idx..src_idx+4);
+            font.draw(&format!("{:.0}", fps), self.pixels.get_frame())?;
 
-                            if let Some(dst) = dst {
-                                if let Some(src) = src {
-                                    if src[1] == 0 && src[2] == 0 && src[3] == 0 {
-                                        continue;
-                                    }
-                                    dst.copy_from_slice(&[src[1], src[2], src[3], src[0]]);
-                                }
-                            }
-                        }
-                    }
-                });
-            }
             self.pixels.render().map_err(|e| e.to_string())?;
         }
 

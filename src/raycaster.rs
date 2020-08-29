@@ -374,7 +374,7 @@ pub fn floorcast(
 ) -> Result<(), String> {
     let projection_center = projection_plane.1 / 2;
     let tile_size = TILE_SIZE as f32;
-    
+
     for row in range {
         let bheight = if side == 'f' {
             row - projection_center
