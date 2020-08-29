@@ -82,10 +82,11 @@ impl Game {
 
             state.update()?;
 
+            // Clear
             self.pixels
                 .get_frame()
-                .copy_from_slice(&[65, 70, 67, 0xff].repeat(320 * 200));
-            //.copy_from_slice(&[0x00; 320 * 200 * 4]);
+                .copy_from_slice(&[0, 0, 0, 0xff].repeat(320 * 200));
+
             state.draw(self.pixels.get_frame())?;
 
             font.draw(&format!("{:.0}", fps), self.pixels.get_frame())?;

@@ -39,9 +39,15 @@ impl Texture {
         self.height as i32
     }
 
-    pub fn draw_strip_at(&self, x: i32, tex_x: i32, top: i32, bottom: i32, buf: &mut [u8]) {
-        //self.data.chunks_exact(3)
-
+    pub fn draw_strip_at_ex(
+        &self,
+        x: i32,
+        tex_x: i32,
+        top: i32,
+        bottom: i32,
+        buf: &mut [u8],
+        mult: Option<&[f32; 3]>,
+    ) {
         let height = bottom - top;
 
         // TODO: Replace fixed 320 and 200s by a width being passed
@@ -53,38 +59,58 @@ impl Texture {
             if screen_y > 200 {
                 continue;
             }
-            self.copy_to(tex_x, tex_y as i32, x, screen_y as i32, buf)
+            self.copy_to_ex(tex_x, tex_y as i32, x, screen_y as i32, buf, mult)
         }
+    }
+
+    pub fn draw_strip_at(&self, x: i32, tex_x: i32, top: i32, bottom: i32, buf: &mut [u8]) {
+        self.draw_strip_at_ex(x, tex_x, top, bottom, buf, None)
     }
 }
 
 impl Drawable for Texture {
-    fn copy_to(&self, tex_x: i32, tex_y: i32, x: i32, y: i32, buf: &mut [u8]) {
+    fn copy_to_ex(
+        &self,
+        tex_x: i32,
+        tex_y: i32,
+        x: i32,
+        y: i32,
+        buf: &mut [u8],
+        mult: Option<&[f32; 3]>,
+    ) {
         let (r, g, b) = self.color_at(tex_x, tex_y);
 
         let idx = ((320 * y + x) * 4) as usize;
         if idx >= buf.len() {
             return;
         }
+
+        let (r, g, b) = if let Some(&[mr, mg, mb]) = mult {
+            (
+                (r as f32 * mr) as u8,
+                (g as f32 * mg) as u8,
+                (b as f32 * mb) as u8,
+            )
+        } else {
+            (r, g, b)
+        };
+
         buf[idx..idx + 4].copy_from_slice(&[r, g, b, 0xff]);
     }
 }
 
 pub trait Drawable {
-    fn copy_to(&self, tex_x: i32, tex_y: i32, x: i32, y: i32, buf: &mut [u8]);
-}
+    fn copy_to_ex(
+        &self,
+        tex_x: i32,
+        tex_y: i32,
+        x: i32,
+        y: i32,
+        buf: &mut [u8],
+        mult: Option<&[f32; 3]>,
+    );
 
-impl Drawable for &[u8; 3] {
-    fn copy_to(&self, _tex_x: i32, _tex_y: i32, x: i32, y: i32, buf: &mut [u8]) {
-        let (r, g, b) = (self[0], self[1], self[2]);
-
-        if let Some(dst) = buf
-            .chunks_exact_mut(4)
-            .skip(y as usize * 320)
-            .skip(x as usize)
-            .next()
-        {
-            dst.copy_from_slice(&[r, g, b, 0xff]);
-        }
+    fn copy_to(&self, tex_x: i32, tex_y: i32, x: i32, y: i32, buf: &mut [u8]) {
+        self.copy_to_ex(tex_x, tex_y, x, y, buf, None)
     }
 }

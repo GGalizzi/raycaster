@@ -145,11 +145,6 @@ impl State for GameState {
             .query::<(&Position, &Player, &game_plugin::Rotation)>()
             .iter()
         {
-            buf.chunks_exact_mut(4)
-                .nth(320 * position.y as usize + position.x as usize)
-                .unwrap()
-                .copy_from_slice(&[0x5e, 0x48, 0xe8, 0xff]);
-
             raycast(
                 resulting_resolution,
                 fov,

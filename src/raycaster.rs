@@ -94,7 +94,19 @@ pub fn raycast(
             };
             let tex_x = ((wall_x / tile_size).fract() * wall_texture.width() as f32) as i32;
 
-            wall_texture.draw_strip_at(x, tex_x, wall_top, wall_bottom, pixels);
+            let mult = 1. / distance_to_wall;
+
+            // So dark we don't need to copy anything
+            if mult > 0.008 {
+                wall_texture.draw_strip_at_ex(
+                    x,
+                    tex_x,
+                    wall_top,
+                    wall_bottom,
+                    pixels,
+                    Some(&[mult, mult, mult]),
+                );
+            }
 
             let angle = rotation.rotated(-ray_rotation.degrees());
 
@@ -330,14 +342,14 @@ impl Map {
                 #..............###
                 #..............###
                 #..............###
-                #..............###
-                #..............###
-                #..............###
-                #..............###
-                #..............###
-                #..............###
-                #..............###
-                #..............###
+                #........#.....###
+                #........#.....###
+                #...######.....###
+                #...#..........###
+                #...#.....#....###
+                #...#.....#....###
+                #...####..#....###
+                #.........#....###
                 ##################
             "#
             .to_owned()
@@ -395,10 +407,17 @@ pub fn floorcast(
         let tex_y = ((ends.1 / tile_size).fract() * floor_texture.height() as f32) as i32;
 
         if floor_texture.color_at(tex_x, tex_y) == (65, 70, 67) {
+            //continue;
+        }
+
+        let mult = 1. / distance_to_point;
+
+        // So dark we don't need to copy anything
+        if mult < 0.005 {
             continue;
         }
 
-        floor_texture.copy_to(tex_x, tex_y, x, row, pixels);
+        floor_texture.copy_to_ex(tex_x, tex_y, x, row, pixels, Some(&[mult, mult, mult]));
     }
 
     Ok(())
