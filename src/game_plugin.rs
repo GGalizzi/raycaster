@@ -74,7 +74,7 @@ impl Position {
 
     pub fn move_towards(&self, dir: Direction, dt: f32) -> Position {
         // TODO: Would be a component, or stat or something
-        let speed = 320.0;
+        // let speed = 320.0;
 
         self + dir * 2.0
     }

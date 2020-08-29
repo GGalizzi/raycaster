@@ -96,36 +96,6 @@ pub fn raycast(
 
             wall_texture.draw_strip_at(x, tex_x, wall_top, wall_bottom, pixels);
 
-            /*canvas.copy(
-                texture,
-                Rect::new(tex_x, 0, 1, texture.query().height),
-                Rect::new(x as i32, wall_top, 1_u32, projected_height as u32),
-            )?;*/
-
-            /*
-            wall_texture.draw(
-                context,
-                DrawParams::new()
-                    .position(Vec2::new(x as f32, wall_top as f32))
-                    .scale(Vec2::new(
-                        1.0,
-                        projected_height as f32 / projection_plane.1 as f32,
-                    ))
-                    .clip(Rectangle::new(
-                        tex_x as f32,
-                        0.0,
-                        1.,
-                        wall_texture.height() as f32,
-                    )),
-            );
-            */
-
-            // Draw intersection "mini-map"
-            /*
-            canvas.set_draw_color((220, if side == 'v' { 15 } else { 255 }, 55));
-            canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
-            */
-
             let angle = rotation.rotated(-ray_rotation.degrees());
 
             floorcast(
@@ -406,12 +376,6 @@ pub fn floorcast(
     let tile_size = TILE_SIZE as f32;
     
     for row in range {
-        /*
-        if (x + row) % 3 < 2 {
-            continue;
-        }
-        */
-
         let bheight = if side == 'f' {
             row - projection_center
         } else {
@@ -421,20 +385,6 @@ pub fn floorcast(
             (PLAYER_HEIGHT as f32 / (bheight) as f32) * distance_to_plane as f32;
 
         let distance_to_point = straight_distance / angle.cos();
-
-        let skip_every = (distance_to_point).round() as i32;
-
-        if (x + row) % skip_every > 2 {
-            let color = &[20,0x00,0x00];
-            //color.copy_to(0,0,x,row,pixels);
-            //continue;
-        }
-
-        /*
-        if distance_to_point > 72. && (x + row) % 2 == 0 {
-            continue;
-        }
-        */
 
         let ends = (
             distance_to_point * ray.cos() + player.x,

@@ -5,7 +5,7 @@ use pixels::{
 use sdl2::event::Event;
 use sdl2::video::Window;
 use sdl2::EventPump;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use crate::State;
 
@@ -13,7 +13,7 @@ pub struct Game {
     pixels: Pixels<Window>,
     event_pump: EventPump,
     ttf_context: sdl2::ttf::Sdl2TtfContext,
-    window: Window,
+    _window: Window,
 }
 
 impl Game {
@@ -49,7 +49,7 @@ impl Game {
             pixels,
             event_pump,
             ttf_context,
-            window,
+            _window: window,
         })
     }
 
@@ -91,7 +91,6 @@ impl Game {
                     .render(&format!("{:.0}", fps))
                     .blended((0, 0, 255, 255))
                     .map_err(|e| e.to_string())?;
-                let pitch = font_surface.pitch();
                 font_surface.with_lock(|data| {
                     for x in 0..font_surface.width() {
                         for y in 0..font_surface.height() {
