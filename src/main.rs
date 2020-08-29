@@ -17,7 +17,7 @@ use texture::Texture;
 pub const TILE_SIZE: i32 = 12;
 
 const resulting_resolution: (i32, i32) = (320, 200);
-const actual_resolution: (i32, i32) = (1080, 768);
+const actual_resolution: (u32, u32) = (640, 400);
 
 #[derive(Debug)]
 pub struct MouseMotion {
@@ -95,7 +95,7 @@ impl GameState {
             &mut bevy.resources,
         );
 
-        let wall_texture = Texture::new("assets/stone_wall.png");
+        let wall_texture = Texture::new("assets/stone_wall_b.png");
         let floor_texture = Texture::new("assets/stone_floor_c.png");
         //let canvas = Canvas::new(context, resulting_resolution.0, resulting_resolution.1).unwrap();
 
