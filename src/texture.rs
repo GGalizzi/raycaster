@@ -40,17 +40,29 @@ impl Texture {
         //self.data.chunks_exact(3)
 
         let height = bottom - top;
-        
 
         // TODO: Replace fixed 320 and 200s by a width being passed
         for y in 0..height {
             let tex_y = (y as f64 / height as f64 * self.height as f64).round() as usize;
-            
+
             let screen_y = (top + y as i32) as usize;
-            
-            if screen_y > 200 { continue; }
-            if let Some(pixel) = self.data.chunks_exact(3).skip(tex_y * self.width as usize).skip(tex_x as usize).next() {
-                if let Some(screen_slice) = buf.chunks_exact_mut(4).skip(screen_y * 320).skip(x as usize).next() {
+
+            if screen_y > 200 {
+                continue;
+            }
+            if let Some(pixel) = self
+                .data
+                .chunks_exact(3)
+                .skip(tex_y * self.width as usize)
+                .skip(tex_x as usize)
+                .next()
+            {
+                if let Some(screen_slice) = buf
+                    .chunks_exact_mut(4)
+                    .skip(screen_y * 320)
+                    .skip(x as usize)
+                    .next()
+                {
                     screen_slice.copy_from_slice(&[pixel[0], pixel[1], pixel[2], 0xff]);
                 }
             }

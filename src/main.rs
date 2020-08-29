@@ -116,7 +116,7 @@ pub trait State {
 
 impl State for GameState {
     fn update(&mut self) -> Result<(), String> {
-        //self.fps = time::get_fps(ctx);
+        self.fps = self.bevy.resources.get::<Time>().unwrap().delta_seconds_f64;
 
         self.bevy.update();
 
