@@ -447,16 +447,18 @@ fn floorcast(
         let tex_x = ((ends.0 / tile_size).fract() * floor_texture.width() as f32) as i32;
         let tex_y = ((ends.1 / tile_size).fract() * floor_texture.height() as f32) as i32;
         
-        let dst_to_light = map.distance_to_light((ends.0 / tile_size) as i32, (ends.1 / tile_size) as i32);
-
-        let mult = 1. / distance_to_point + 1. / dst_to_light;
+        let mut light_mult = 1.0 / map.distance_to_light((ends.0 / tile_size) as i32, (ends.1 / tile_size) as i32);
+        
+        if light_mult < 0.08 { light_mult = 0.; }
+        
+        let mult = 1. / distance_to_point;
 
         // So dark we don't need to copy anything
         if mult < 0.005 {
             continue;
         }
 
-        floor_texture.copy_to_ex(tex_x, tex_y, x, row, pixels, Some(&[mult, mult, mult]));
+        floor_texture.copy_to_ex(tex_x, tex_y, x, row, pixels, Some(&[(mult + light_mult).min(1.0), mult, mult]));
     }
 
     Ok(())
