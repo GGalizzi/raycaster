@@ -179,18 +179,10 @@ fn look_for_horizontal(
         IntersectionPoint::new(first_x, first_y, 0, mod_y, TILE_SIZE)
     };
 
-    let distance_to_next_y = if ray_rotation.is_facing_up() {
-        -tile_size
-    } else {
-        tile_size
-    };
-    let distance_to_next_x = distance_to_next_y / ray_rotation.tan();
-
     Ok(step_ray(
         position,
         &mut intersection,
-        distance_to_next_x,
-        distance_to_next_y,
+        &ray_rotation,
         'h',
         map,
         0,
@@ -233,18 +225,10 @@ fn look_for_vertical(
         IntersectionPoint::new(first_x, first_y, mod_x, 0, TILE_SIZE)
     };
 
-    let distance_to_next_x = if ray_rotation.is_facing_left() {
-        -tile_size
-    } else {
-        tile_size
-    };
-    let distance_to_next_y = distance_to_next_x * ray_rotation.tan();
-
     Ok(step_ray(
         position,
         &mut intersection,
-        distance_to_next_x,
-        distance_to_next_y,
+        &ray_rotation,
         'v',
         map,
         0,
@@ -252,20 +236,36 @@ fn look_for_vertical(
 }
 
 fn step_ray(
-    position: &Position,
-    intersection: &mut IntersectionPoint,
-    distance_to_next_x: f32,
-    distance_to_next_y: f32,
+    position: &Position,                  // From
+    intersection: &mut IntersectionPoint, // To
+    ray_rotation: &Rotation,
     side: char,
     map: &Map,
     n: i32,
 ) -> (IntersectionPoint, f32) {
+    let tile_size = TILE_SIZE as f32;
     if map.is_blocking_at(intersection.as_grid_pair()) {
         return (
             *intersection,
             (position.y - intersection.y).hypot(position.x - intersection.x),
         );
     }
+
+    let (distance_to_next_x, distance_to_next_y) = if side == 'v' {
+        let distance_to_next_x = if ray_rotation.is_facing_left() {
+            -tile_size
+        } else {
+            tile_size
+        };
+        (distance_to_next_x, distance_to_next_x * ray_rotation.tan())
+    } else {
+        let distance_to_next_y = if ray_rotation.is_facing_up() {
+            -tile_size
+        } else {
+            tile_size
+        };
+        (distance_to_next_y / ray_rotation.tan(), distance_to_next_y)
+    };
 
     if n > 250 {
         return (*intersection, f32::MAX);
@@ -282,8 +282,7 @@ fn step_ray(
             intersection.mod_y,
             TILE_SIZE,
         ),
-        distance_to_next_x,
-        distance_to_next_y,
+        ray_rotation,
         side,
         map,
         n + 1,
@@ -369,16 +368,17 @@ impl Map {
             height: 18,
             lights: Vec::new(),
         };
-        
+
         map.bake_lights();
         map
     }
-    
+
     fn bake_lights(&mut self) {
         self.lights.clear();
         for (i, t) in self.tiles.iter().enumerate() {
             if *t == 'l' {
-                self.lights.push((i as i32 % self.width, i as i32 / self.width))
+                self.lights
+                    .push((i as i32 % self.width, i as i32 / self.width))
             }
         }
     }
@@ -394,15 +394,19 @@ impl Map {
     pub fn distance_to_light(&self, x: i32, y: i32) -> f32 {
         let mut closest = None;
         for (lx, ly) in &self.lights {
-            let dst = ((x - lx) as f32).abs().hypot(((y - ly) as f32).abs());
-            
+            let x = ((x - lx) as f32).abs();
+            let y = ((y - ly) as f32).abs();
+            let dst = x.hypot(y);
+
             if let Some(c) = closest {
-                if dst < c { closest = Some(dst); }
+                if dst < c {
+                    closest = Some(dst);
+                }
             } else {
                 closest = Some(dst);
             }
         }
-        
+
         if let Some(closest) = closest {
             closest
         } else {
@@ -446,11 +450,14 @@ fn floorcast(
 
         let tex_x = ((ends.0 / tile_size).fract() * floor_texture.width() as f32) as i32;
         let tex_y = ((ends.1 / tile_size).fract() * floor_texture.height() as f32) as i32;
-        
-        let mut light_mult = 1.0 / map.distance_to_light((ends.0 / tile_size) as i32, (ends.1 / tile_size) as i32);
-        
-        if light_mult < 0.08 { light_mult = 0.; }
-        
+
+        let mut light_mult =
+            1.0 / map.distance_to_light((ends.0 / tile_size) as i32, (ends.1 / tile_size) as i32);
+
+        if light_mult < 0.08 {
+            light_mult = 0.;
+        }
+
         let mult = 1. / distance_to_point;
 
         // So dark we don't need to copy anything
@@ -458,7 +465,14 @@ fn floorcast(
             continue;
         }
 
-        floor_texture.copy_to_ex(tex_x, tex_y, x, row, pixels, Some(&[(mult + light_mult).min(1.0), mult, mult]));
+        floor_texture.copy_to_ex(
+            tex_x,
+            tex_y,
+            x,
+            row,
+            pixels,
+            Some(&[(mult + light_mult).min(1.0), mult, mult]),
+        );
     }
 
     Ok(())
