@@ -94,7 +94,12 @@ pub fn raycast(
             };
             let tex_x = ((wall_x / tile_size).fract() * wall_texture.width() as f32) as i32;
 
-            let mult = 1. / distance_to_wall;
+            let dst_to_light = map.distance_to_light(
+                (intersection.x / tile_size) as i32,
+                (intersection.y / tile_size) as i32,
+            );
+
+            let mult = 1. / distance_to_wall + 1. / dst_to_light;
 
             // So dark we don't need to copy anything
             if mult > 0.008 {
@@ -121,6 +126,7 @@ pub fn raycast(
                 pixels,
                 floor_texture,
                 'f',
+                &map,
             )?;
 
             floorcast(
@@ -134,6 +140,7 @@ pub fn raycast(
                 pixels,
                 floor_texture,
                 'c',
+                &map,
             )?;
         }
 
@@ -327,11 +334,12 @@ struct Map {
     tiles: Vec<char>,
     width: i32,
     height: i32,
+    lights: Vec<(i32, i32)>,
 }
 
 impl Map {
     pub fn new() -> Map {
-        Map {
+        let mut map = Map {
             tiles: r#"
                 ##################
                 #.............####
@@ -349,7 +357,7 @@ impl Map {
                 #...#.....#....###
                 #...#.....#....###
                 #...####..#....###
-                #.........#....###
+                #.........#...l###
                 ##################
             "#
             .to_owned()
@@ -359,6 +367,19 @@ impl Map {
             .collect(),
             width: 18,
             height: 18,
+            lights: Vec::new(),
+        };
+        
+        map.bake_lights();
+        map
+    }
+    
+    fn bake_lights(&mut self) {
+        self.lights.clear();
+        for (i, t) in self.tiles.iter().enumerate() {
+            if *t == 'l' {
+                self.lights.push((i as i32 % self.width, i as i32 / self.width))
+            }
         }
     }
 
@@ -369,10 +390,29 @@ impl Map {
         }
         self.tiles[given_idx] == '#'
     }
+
+    pub fn distance_to_light(&self, x: i32, y: i32) -> f32 {
+        let mut closest = None;
+        for (lx, ly) in &self.lights {
+            let dst = ((x - lx) as f32).abs().hypot(((y - ly) as f32).abs());
+            
+            if let Some(c) = closest {
+                if dst < c { closest = Some(dst); }
+            } else {
+                closest = Some(dst);
+            }
+        }
+        
+        if let Some(closest) = closest {
+            closest
+        } else {
+            f32::MAX
+        }
+    }
 }
 
 const PLAYER_HEIGHT: i32 = TILE_SIZE / 2;
-pub fn floorcast(
+fn floorcast(
     x: i32,
     range: std::ops::Range<i32>,
     player: &Position,
@@ -383,6 +423,7 @@ pub fn floorcast(
     pixels: &mut [u8],
     floor_texture: &Texture,
     side: char,
+    map: &Map,
 ) -> Result<(), String> {
     let projection_center = projection_plane.1 / 2;
     let tile_size = TILE_SIZE as f32;
@@ -405,12 +446,10 @@ pub fn floorcast(
 
         let tex_x = ((ends.0 / tile_size).fract() * floor_texture.width() as f32) as i32;
         let tex_y = ((ends.1 / tile_size).fract() * floor_texture.height() as f32) as i32;
+        
+        let dst_to_light = map.distance_to_light((ends.0 / tile_size) as i32, (ends.1 / tile_size) as i32);
 
-        if floor_texture.color_at(tex_x, tex_y) == (65, 70, 67) {
-            //continue;
-        }
-
-        let mult = 1. / distance_to_point;
+        let mult = 1. / distance_to_point + 1. / dst_to_light;
 
         // So dark we don't need to copy anything
         if mult < 0.005 {
