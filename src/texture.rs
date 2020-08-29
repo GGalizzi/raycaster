@@ -68,4 +68,17 @@ impl Texture {
             }
         }
     }
+
+    pub fn copy_to(&self, tex_x: i32, tex_y: i32, x: i32, y: i32, buf: &mut [u8]) {
+        let (r, g, b) = self.color_at(tex_x, tex_y);
+
+        if let Some(dst) = buf
+            .chunks_exact_mut(4)
+            .skip(y as usize * 320)
+            .skip(x as usize)
+            .next()
+        {
+            dst.copy_from_slice(&[r, g, b, 0xff]);
+        }
+    }
 }

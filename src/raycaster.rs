@@ -127,7 +127,7 @@ pub fn raycast(
             */
 
             let angle = rotation.rotated(-ray_rotation.degrees());
-            /*
+
             floorcast(
                 x,
                 wall_bottom..projection_plane.1,
@@ -136,7 +136,7 @@ pub fn raycast(
                 angle.clone(),
                 distance_to_plane,
                 projection_plane,
-                context,
+                pixels,
                 floor_texture,
                 'f',
             )?;
@@ -149,11 +149,10 @@ pub fn raycast(
                 angle,
                 distance_to_plane,
                 projection_plane,
-                context,
+                pixels,
                 floor_texture,
                 'c',
             )?;
-            */
         }
 
         // Done, next angle
@@ -380,7 +379,6 @@ impl Map {
     }
 }
 
-/*
 const PLAYER_HEIGHT: i32 = TILE_SIZE / 2;
 pub fn floorcast(
     x: i32,
@@ -390,7 +388,7 @@ pub fn floorcast(
     angle: Rotation,
     distance_to_plane: f32,
     projection_plane: (i32, i32),
-    context: &mut Context,
+    pixels: &mut [u8],
     floor_texture: &Texture,
     side: char,
 ) -> Result<(), String> {
@@ -398,7 +396,7 @@ pub fn floorcast(
     let tile_size = TILE_SIZE as f32;
     for row in range {
         if (x + row) % 3 < 2 {
-            continue;
+            //continue;
         }
         let bheight = if side == 'f' {
             row - projection_center
@@ -430,6 +428,20 @@ pub fn floorcast(
         canvas.draw_point((x, row))?;
         */
 
+        floor_texture.copy_to(tex_x, tex_y, x, row, pixels);
+        /*
+        let dst = pixels
+            .chunks_exact_mut(4)
+            .skip(row as usize * projection_plane.0 as usize)
+            .skip(x as usize)
+            .next();
+
+        if let Some(dst) = dst {
+            dst.copy_from_slice(&[50, 50, 80, 255])
+        }
+        */
+
+        /*
         floor_texture.draw(
             context,
             DrawParams::new()
@@ -437,9 +449,8 @@ pub fn floorcast(
                 .scale(Vec2::new(0.1, 0.1))
                 .clip(Rectangle::new(tex_x as f32, tex_y as f32, 6., 6.)),
         );
+        */
     }
 
     Ok(())
 }
-
-*/
