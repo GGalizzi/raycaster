@@ -1,6 +1,6 @@
 # Raycaster thingy
 
-![Screenshot of this raycaster v3](/readmeimgs/v4.png)
+![Screenshot of this raycaster v5](/readmeimgs/v5.gif)
 
 A Raycaster is a method used to render a 3D representation of a 2D grid.
 
