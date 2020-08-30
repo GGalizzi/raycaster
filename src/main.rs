@@ -1,4 +1,4 @@
-use bevy::prelude::App;
+use bevy::prelude::{App, Query};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
@@ -8,6 +8,7 @@ mod game;
 mod game_plugin;
 mod raycaster;
 mod texture;
+mod util;
 
 use base_plugin::BasePlugin;
 use game::Game;
@@ -18,7 +19,7 @@ use texture::Texture;
 pub const TILE_SIZE: i32 = 12;
 
 const resulting_resolution: (i32, i32) = (320, 200);
-const actual_resolution: (u32, u32) = (640, 400);
+const actual_resolution: (u32, u32) = (1080, 768);
 
 #[derive(Debug)]
 pub struct MouseMotion {
@@ -123,6 +124,15 @@ impl State for GameState {
             let mut mm = self.bevy.resources.get_mut::<MouseMotion>().unwrap();
             mm.clear();
         }
+
+        /*
+        for p in self.bevy.world.query::<&Position>().iter() {
+            println!(
+                "pp {:?}",
+                (p.x as i32 / crate::TILE_SIZE, p.y as i32 / crate::TILE_SIZE)
+            );
+        }
+        */
         Ok(())
     }
 

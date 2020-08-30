@@ -351,13 +351,13 @@ impl Map {
                 #..............###
                 #..............###
                 #........#.....###
-                #........#.....###
+                #........#l....###
                 #...######.....###
                 #...#..........###
                 #...#.....#....###
                 #...#.....#....###
                 #...####..#....###
-                #.........#...l###
+                #.........#....###
                 ##################
             "#
             .to_owned()
@@ -386,6 +386,14 @@ impl Map {
         }
 
         let mut light_data = vec![None; (self.width * self.height) as usize];
+
+        if self.tiles.len() != light_data.len() {
+            panic!(format!(
+                "Map size not the same as data size. tiles {:?}, data {:?}",
+                self.tiles.len(),
+                self.light_data.len()
+            ));
+        }
         for x in 0..self.width {
             for y in 0..self.height {
                 let dst = self.prepare_light_data(x, y);
@@ -408,9 +416,18 @@ impl Map {
     fn prepare_light_data(&self, x: i32, y: i32) -> f32 {
         let mut closest = None;
         for (lx, ly) in &self.lights {
-            let x = ((x - lx) as f32).abs();
-            let y = ((y - ly) as f32).abs();
-            let dst = x.hypot(y);
+
+            let dst = if let Some(_) =
+                crate::util::raycast((x as i32, y as i32), (*lx as i32, *ly as i32), |point| {
+                    let b = self.is_blocking_at(point);
+                    b
+                }) {
+                f32::MAX
+            } else {
+                let x = ((x - lx) as f32).abs();
+                let y = ((y - ly) as f32).abs();
+                x.hypot(y)
+            };
 
             if let Some(c) = closest {
                 if dst < c {
@@ -430,7 +447,7 @@ impl Map {
 
     pub fn distance_to_light(&self, x: i32, y: i32) -> f32 {
         let idx = (self.width * y + x) as usize;
-        if idx > self.light_data.len() {
+        if idx >= self.light_data.len() {
             return f32::MAX;
         }
         self.light_data[idx].unwrap_or(f32::MAX)
@@ -480,7 +497,7 @@ fn floorcast(
             light_mult = 0.;
         }
 
-        let mult = 1. / distance_to_point;
+        let mult = 1. / distance_to_point + light_mult;
 
         // So dark we don't need to copy anything
         if mult < 0.005 {
@@ -493,7 +510,7 @@ fn floorcast(
             x,
             row,
             pixels,
-            Some(&[(mult + light_mult).min(1.0), mult, mult]),
+            Some(&[mult, mult, mult]),
         );
     }
 
