@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use tetra::input::Key;
+use sdl2::keyboard::Keycode;
 
 use crate::{Keypress, MouseMotion};
 
@@ -74,7 +74,8 @@ impl Position {
 
     pub fn move_towards(&self, dir: Direction, dt: f32) -> Position {
         // TODO: Would be a component, or stat or something
-        let speed = 320.0;
+        // let speed = 320.0;
+
         self + dir * 2.0
     }
 }
@@ -91,7 +92,6 @@ impl Plugin for GamePlugin {
 
 fn spawn(mut commands: Commands) {
     commands.spawn((Position::new(30., 30.), Player, Rotation::new(0.0)));
-    println!("should spaned?");
 }
 
 fn movement(
@@ -101,19 +101,19 @@ fn movement(
     rotation: &Rotation,
 ) {
     let direction = rotation.direction();
-    if keypress.is(Key::W) {
+    if keypress.is(Keycode::W) {
         *position = position.move_towards(direction, time.delta_seconds);
     }
 
-    if keypress.is(Key::S) {
+    if keypress.is(Keycode::S) {
         *position = position.move_towards(-direction, time.delta_seconds);
     }
 
-    if keypress.is(Key::A) {
+    if keypress.is(Keycode::A) {
         *position = position.move_towards(rotation.rotated(-90.).direction(), time.delta_seconds);
     }
 
-    if keypress.is(Key::D) {
+    if keypress.is(Keycode::D) {
         *position = position.move_towards(rotation.rotated(90.).direction(), time.delta_seconds);
     }
 }

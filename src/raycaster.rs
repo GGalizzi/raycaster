@@ -1,11 +1,5 @@
-use tetra::{
-    graphics::{DrawParams, Rectangle},
-    math::Vec2,
-    Context,
-};
-
 use crate::game_plugin::{Position, Rotation};
-use crate::texture::Texture;
+use crate::texture::{Drawable, Texture};
 
 use crate::TILE_SIZE;
 
@@ -14,11 +8,11 @@ pub fn raycast(
     fov: i32,
     position: &Position,
     rotation: &Rotation,
-    context: &mut Context,
+    pixels: &mut [u8],
     wall_texture: &Texture,
     floor_texture: &Texture,
+    map: &Map,
 ) -> Result<(), String> {
-    let map: Map = Map::new();
     let half_fov = Rotation::new(fov as f32 / 2.0);
     let fov = Rotation::new(fov as f32);
 
@@ -100,35 +94,27 @@ pub fn raycast(
             };
             let tex_x = ((wall_x / tile_size).fract() * wall_texture.width() as f32) as i32;
 
-            /*canvas.copy(
-                texture,
-                Rect::new(tex_x, 0, 1, texture.query().height),
-                Rect::new(x as i32, wall_top, 1_u32, projected_height as u32),
-            )?;*/
-
-            wall_texture.draw(
-                context,
-                DrawParams::new()
-                    .position(Vec2::new(x as f32, wall_top as f32))
-                    .scale(Vec2::new(
-                        1.0,
-                        projected_height as f32 / projection_plane.1 as f32,
-                    ))
-                    .clip(Rectangle::new(
-                        tex_x as f32,
-                        0.0,
-                        1.,
-                        wall_texture.height() as f32,
-                    )),
+            let dst_to_light = map.distance_to_light(
+                (intersection.x / tile_size) as i32,
+                (intersection.y / tile_size) as i32,
             );
 
-            // Draw intersection "mini-map"
-            /*
-            canvas.set_draw_color((220, if side == 'v' { 15 } else { 255 }, 55));
-            canvas.draw_point((intersection.x as i32, intersection.y as i32))?;
-            */
+            let mult = 1. / distance_to_wall + 1. / dst_to_light;
+
+            // So dark we don't need to copy anything
+            if mult > 0.008 {
+                wall_texture.draw_strip_at_ex(
+                    x,
+                    tex_x,
+                    wall_top,
+                    wall_bottom,
+                    pixels,
+                    Some(&[mult, mult, mult]),
+                );
+            }
 
             let angle = rotation.rotated(-ray_rotation.degrees());
+
             floorcast(
                 x,
                 wall_bottom..projection_plane.1,
@@ -137,9 +123,10 @@ pub fn raycast(
                 angle.clone(),
                 distance_to_plane,
                 projection_plane,
-                context,
+                pixels,
                 floor_texture,
                 'f',
+                &map,
             )?;
 
             floorcast(
@@ -150,9 +137,10 @@ pub fn raycast(
                 angle,
                 distance_to_plane,
                 projection_plane,
-                context,
+                pixels,
                 floor_texture,
                 'c',
+                &map,
             )?;
         }
 
@@ -191,18 +179,10 @@ fn look_for_horizontal(
         IntersectionPoint::new(first_x, first_y, 0, mod_y, TILE_SIZE)
     };
 
-    let distance_to_next_y = if ray_rotation.is_facing_up() {
-        -tile_size
-    } else {
-        tile_size
-    };
-    let distance_to_next_x = distance_to_next_y / ray_rotation.tan();
-
     Ok(step_ray(
         position,
         &mut intersection,
-        distance_to_next_x,
-        distance_to_next_y,
+        &ray_rotation,
         'h',
         map,
         0,
@@ -245,18 +225,10 @@ fn look_for_vertical(
         IntersectionPoint::new(first_x, first_y, mod_x, 0, TILE_SIZE)
     };
 
-    let distance_to_next_x = if ray_rotation.is_facing_left() {
-        -tile_size
-    } else {
-        tile_size
-    };
-    let distance_to_next_y = distance_to_next_x * ray_rotation.tan();
-
     Ok(step_ray(
         position,
         &mut intersection,
-        distance_to_next_x,
-        distance_to_next_y,
+        &ray_rotation,
         'v',
         map,
         0,
@@ -264,20 +236,36 @@ fn look_for_vertical(
 }
 
 fn step_ray(
-    position: &Position,
-    intersection: &mut IntersectionPoint,
-    distance_to_next_x: f32,
-    distance_to_next_y: f32,
+    position: &Position,                  // From
+    intersection: &mut IntersectionPoint, // To
+    ray_rotation: &Rotation,
     side: char,
     map: &Map,
     n: i32,
 ) -> (IntersectionPoint, f32) {
+    let tile_size = TILE_SIZE as f32;
     if map.is_blocking_at(intersection.as_grid_pair()) {
         return (
             *intersection,
             (position.y - intersection.y).hypot(position.x - intersection.x),
         );
     }
+
+    let (distance_to_next_x, distance_to_next_y) = if side == 'v' {
+        let distance_to_next_x = if ray_rotation.is_facing_left() {
+            -tile_size
+        } else {
+            tile_size
+        };
+        (distance_to_next_x, distance_to_next_x * ray_rotation.tan())
+    } else {
+        let distance_to_next_y = if ray_rotation.is_facing_up() {
+            -tile_size
+        } else {
+            tile_size
+        };
+        (distance_to_next_y / ray_rotation.tan(), distance_to_next_y)
+    };
 
     if n > 250 {
         return (*intersection, f32::MAX);
@@ -294,8 +282,7 @@ fn step_ray(
             intersection.mod_y,
             TILE_SIZE,
         ),
-        distance_to_next_x,
-        distance_to_next_y,
+        ray_rotation,
         side,
         map,
         n + 1,
@@ -342,15 +329,17 @@ impl Default for IntersectionPoint {
     }
 }
 
-struct Map {
+pub struct Map {
     tiles: Vec<char>,
     width: i32,
     height: i32,
+    lights: Vec<(i32, i32)>,
+    light_data: Vec<Option<f32>>,
 }
 
 impl Map {
     pub fn new() -> Map {
-        Map {
+        let mut map = Map {
             tiles: r#"
                 ##################
                 #.............####
@@ -359,6 +348,16 @@ impl Map {
                 #.............####
                 #.............####
                 #..............###
+                #..............###
+                #..............###
+                #........#.....###
+                #........#l....###
+                #...######.....###
+                #...#..........###
+                #...#.....#....###
+                #...#.....#....###
+                #...####..#....###
+                #.........#....###
                 ##################
             "#
             .to_owned()
@@ -367,21 +366,96 @@ impl Map {
             .chars()
             .collect(),
             width: 18,
-            height: 8,
-        }
+            height: 18,
+            lights: Vec::new(),
+            light_data: Vec::new(),
+        };
+
+        map.bake_lights();
+        map
     }
 
-    pub fn is_blocking_at(&self, (x, y): (i32, i32)) -> bool {
+    // Finds the closest light source for every tile on map
+    fn bake_lights(&mut self) {
+        self.lights.clear();
+        for (i, t) in self.tiles.iter().enumerate() {
+            if *t == 'l' {
+                self.lights
+                    .push((i as i32 % self.width, i as i32 / self.width))
+            }
+        }
+
+        let mut light_data = vec![None; (self.width * self.height) as usize];
+
+        if self.tiles.len() != light_data.len() {
+            panic!(format!(
+                "Map size not the same as data size. tiles {:?}, data {:?}",
+                self.tiles.len(),
+                self.light_data.len()
+            ));
+        }
+        for x in 0..self.width {
+            for y in 0..self.height {
+                let dst = self.prepare_light_data(x, y);
+                light_data[(self.width * y + x) as usize] =
+                    if dst != f32::MAX { Some(dst) } else { None };
+            }
+        }
+
+        self.light_data = light_data;
+    }
+
+    fn is_blocking_at(&self, (x, y): (i32, i32)) -> bool {
         let given_idx = (self.width * y + x) as usize;
         if y > self.height || x > self.width || given_idx >= self.tiles.len() {
             return false;
         }
         self.tiles[given_idx] == '#'
     }
+
+    fn prepare_light_data(&self, x: i32, y: i32) -> f32 {
+        let mut closest = None;
+        for (lx, ly) in &self.lights {
+
+            let dst = if let Some(_) =
+                crate::util::raycast((x as i32, y as i32), (*lx as i32, *ly as i32), |point| {
+                    let b = self.is_blocking_at(point);
+                    b
+                }) {
+                f32::MAX
+            } else {
+                let x = ((x - lx) as f32).abs();
+                let y = ((y - ly) as f32).abs();
+                x.hypot(y)
+            };
+
+            if let Some(c) = closest {
+                if dst < c {
+                    closest = Some(dst);
+                }
+            } else {
+                closest = Some(dst);
+            }
+        }
+
+        if let Some(closest) = closest {
+            closest
+        } else {
+            f32::MAX
+        }
+    }
+
+    pub fn distance_to_light(&self, x: i32, y: i32) -> f32 {
+        let idx = (self.width * y + x) as usize;
+        if idx >= self.light_data.len() {
+            return f32::MAX;
+        }
+        self.light_data[idx].unwrap_or(f32::MAX)
+    }
 }
 
 const PLAYER_HEIGHT: i32 = TILE_SIZE / 2;
-pub fn floorcast(
+fn floorcast(
     x: i32,
     range: std::ops::Range<i32>,
     player: &Position,
@@ -389,17 +463,15 @@ pub fn floorcast(
     angle: Rotation,
     distance_to_plane: f32,
     projection_plane: (i32, i32),
-    context: &mut Context,
+    pixels: &mut [u8],
     floor_texture: &Texture,
     side: char,
+    map: &Map,
 ) -> Result<(), String> {
     let projection_center = projection_plane.1 / 2;
     let tile_size = TILE_SIZE as f32;
-    for row in range {
 
-        if (x + row) % 3 < 2 {
-            continue;
-        }
+    for row in range {
         let bheight = if side == 'f' {
             row - projection_center
         } else {
@@ -407,10 +479,8 @@ pub fn floorcast(
         };
         let straight_distance =
             (PLAYER_HEIGHT as f32 / (bheight) as f32) * distance_to_plane as f32;
-            
-        let distance_to_point = straight_distance / angle.cos();
 
-        // if distance_to_point > 70.0 { continue; }
+        let distance_to_point = straight_distance / angle.cos();
 
         let ends = (
             distance_to_point * ray.cos() + player.x,
@@ -419,28 +489,30 @@ pub fn floorcast(
 
         let tex_x = ((ends.0 / tile_size).fract() * floor_texture.width() as f32) as i32;
         let tex_y = ((ends.1 / tile_size).fract() * floor_texture.height() as f32) as i32;
-        
-        if floor_texture.color_at(tex_x, tex_y) == (65,70,67) { 
-            continue; 
+
+        let mut light_mult =
+            1.0 / map.distance_to_light((ends.0 / tile_size) as i32, (ends.1 / tile_size) as i32);
+
+        if light_mult < 0.08 {
+            light_mult = 0.;
         }
 
-        /*
-        let color = (500.0 * (1.0 / distance_to_point.sqrt())) as u8;
-        canvas.set_draw_color((color, color, color));
-        canvas.draw_point((x, row))?;
-        */
+        let mult = 1. / distance_to_point + light_mult;
 
-        floor_texture.draw(
-            context,
-            DrawParams::new()
-                .position(Vec2::new(x as f32, row as f32))
-                .scale(Vec2::new(
-                    0.1,
-                    0.1,
-                ))
-                .clip(Rectangle::new(tex_x as f32, tex_y as f32, 6., 6.)),
+        // So dark we don't need to copy anything
+        if mult < 0.005 {
+            continue;
+        }
+
+        floor_texture.copy_to_ex(
+            tex_x,
+            tex_y,
+            x,
+            row,
+            pixels,
+            Some(&[mult, mult, mult]),
         );
     }
-    
+
     Ok(())
 }
