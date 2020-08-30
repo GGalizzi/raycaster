@@ -15,6 +15,7 @@ use game::Game;
 use game_plugin::{GamePlugin, Player, Position};
 use raycaster::raycast;
 use texture::Texture;
+use raycaster::Map;
 
 pub const TILE_SIZE: i32 = 12;
 
@@ -73,6 +74,7 @@ struct GameState {
     wall_texture: Texture,
     floor_texture: Texture,
     fps: f64,
+    map: Map,
 }
 
 impl GameState {
@@ -106,6 +108,7 @@ impl GameState {
             wall_texture,
             floor_texture,
             fps: 0.0,
+            map: Map::new(),
         })
     }
 }
@@ -163,6 +166,7 @@ impl State for GameState {
                 buf,
                 &self.wall_texture,
                 &self.floor_texture,
+                &self.map,
             )
             .expect("Failed raycasting");
 

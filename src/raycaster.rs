@@ -11,8 +11,8 @@ pub fn raycast(
     pixels: &mut [u8],
     wall_texture: &Texture,
     floor_texture: &Texture,
+    map: &Map,
 ) -> Result<(), String> {
-    let map: Map = Map::new();
     let half_fov = Rotation::new(fov as f32 / 2.0);
     let fov = Rotation::new(fov as f32);
 
@@ -329,7 +329,7 @@ impl Default for IntersectionPoint {
     }
 }
 
-struct Map {
+pub struct Map {
     tiles: Vec<char>,
     width: i32,
     height: i32,
