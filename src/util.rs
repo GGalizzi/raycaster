@@ -54,3 +54,7 @@ where
 
     None
 }
+
+pub fn round_n(num: f32, n: f32) -> f32 {
+    (num / n).round() * n
+}

@@ -11,7 +11,10 @@ build = "build.rs"
 png = "0.16.7"
 pixels = "0.2.0"
 glam = "0.9.3"
-# tetra = { git = 'https://github.com/GGalizzi/tetra', branch= 'relative-mouse-motion' }
+
+[dependencies.rand]
+version = "0.7.3"
+features = ["small_rng"]
 
 [dependencies.sdl2]
 git = "https://github.com/rust-sdl2/rust-sdl2"

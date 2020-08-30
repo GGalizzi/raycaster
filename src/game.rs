@@ -89,7 +89,7 @@ impl Game {
 
             state.draw(self.pixels.get_frame())?;
 
-            font.draw(&format!("{:.0}", fps), self.pixels.get_frame())?;
+            // font.draw(&format!("{:.0}", fps), self.pixels.get_frame())?;
 
             self.pixels.render().map_err(|e| e.to_string())?;
         }

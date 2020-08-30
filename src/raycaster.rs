@@ -1,5 +1,8 @@
+use rand::{SeedableRng, Rng};
+
 use crate::game_plugin::{Position, Rotation};
 use crate::texture::{Drawable, Texture};
+use crate::util;
 
 use crate::TILE_SIZE;
 
@@ -15,6 +18,8 @@ pub fn raycast(
 ) -> Result<(), String> {
     let half_fov = Rotation::new(fov as f32 / 2.0);
     let fov = Rotation::new(fov as f32);
+    
+    let mut rng = rand::rngs::SmallRng::from_entropy();
 
     // using the formula tan(angle) = opposite / adjacent
     // We know the angle, because that's FOV/2
@@ -94,15 +99,14 @@ pub fn raycast(
             };
             let tex_x = ((wall_x / tile_size).fract() * wall_texture.width() as f32) as i32;
 
-            let dst_to_light = map.distance_to_light(
-                (intersection.x / tile_size) as i32,
-                (intersection.y / tile_size) as i32,
-            );
+            let dst_to_light = map.distance_to_light(intersection.x, intersection.y, Some(&mut rng), side);
 
-            let mult = 1. / distance_to_wall + 1. / dst_to_light;
+            let light_mult = light_intensity(dst_to_light);
+
+            let mult = 1. / distance_to_wall + light_mult;
 
             // So dark we don't need to copy anything
-            if mult > 0.008 {
+            if mult > 0.00 {
                 wall_texture.draw_strip_at_ex(
                     x,
                     tex_x,
@@ -127,6 +131,7 @@ pub fn raycast(
                 floor_texture,
                 'f',
                 &map,
+                &mut rng,
             )?;
 
             floorcast(
@@ -141,6 +146,7 @@ pub fn raycast(
                 floor_texture,
                 'c',
                 &map,
+                &mut rng,
             )?;
         }
 
@@ -334,7 +340,7 @@ pub struct Map {
     width: i32,
     height: i32,
     lights: Vec<(i32, i32)>,
-    light_data: Vec<Option<f32>>,
+    light_data: Vec<Option<(i32, i32)>>,
 }
 
 impl Map {
@@ -351,9 +357,9 @@ impl Map {
                 #..............###
                 #..............###
                 #........#.....###
-                #........#l....###
+                #........#.....###
                 #...######.....###
-                #...#..........###
+                #...#l.........###
                 #...#.....#....###
                 #...#.....#....###
                 #...####..#....###
@@ -396,9 +402,8 @@ impl Map {
         }
         for x in 0..self.width {
             for y in 0..self.height {
-                let dst = self.prepare_light_data(x, y);
-                light_data[(self.width * y + x) as usize] =
-                    if dst != f32::MAX { Some(dst) } else { None };
+                let light_pos = self.prepare_light_data(x, y);
+                light_data[(self.width * y + x) as usize] = light_pos;
             }
         }
 
@@ -413,14 +418,12 @@ impl Map {
         self.tiles[given_idx] == '#'
     }
 
-    fn prepare_light_data(&self, x: i32, y: i32) -> f32 {
+    fn prepare_light_data(&self, x: i32, y: i32) -> Option<(i32, i32)> {
         let mut closest = None;
         for (lx, ly) in &self.lights {
-
             let dst = if let Some(_) =
                 crate::util::raycast((x as i32, y as i32), (*lx as i32, *ly as i32), |point| {
-                    let b = self.is_blocking_at(point);
-                    b
+                    self.is_blocking_at(point)
                 }) {
                 f32::MAX
             } else {
@@ -429,28 +432,62 @@ impl Map {
                 x.hypot(y)
             };
 
-            if let Some(c) = closest {
+            if let Some((c, _)) = closest {
                 if dst < c {
-                    closest = Some(dst);
+                    closest = Some((dst, (*lx, *ly)));
                 }
             } else {
-                closest = Some(dst);
+                closest = Some((dst, (*lx, *ly)));
             }
         }
 
         if let Some(closest) = closest {
-            closest
+            if closest.0 == f32::MAX {
+                return None;
+            }
+            Some(closest.1)
         } else {
-            f32::MAX
+            None
         }
     }
 
-    pub fn distance_to_light(&self, x: i32, y: i32) -> f32 {
-        let idx = (self.width * y + x) as usize;
+    pub fn distance_to_light(&self, x: f32, y: f32, rng: Option<&mut rand::rngs::SmallRng>, side: char) -> Option<f32> {
+        let gx = x.floor() as i32 / TILE_SIZE;
+        let gy = y.floor() as i32 / TILE_SIZE;
+        let idx = (self.width * gy + gx) as usize;
+
         if idx >= self.light_data.len() {
-            return f32::MAX;
+            return None;
         }
-        self.light_data[idx].unwrap_or(f32::MAX)
+
+        let tile_size = TILE_SIZE as f32;
+        if let Some((lx, ly)) = self.light_data[idx] {
+
+            let dither = if let Some(rng) = rng {
+                if side == 'c' || side == 'f' {
+                    rng.gen_range(1.,18.)
+                } else {
+                    rng.gen_range(1.,2.)
+                }
+            } else {
+                0.0
+            };
+            
+            let sign = if side == 'h' {
+                (gx - ly).signum()
+            } else {
+                (gy - lx).signum()
+            } as f32;
+
+            let (lx, ly) = (
+                (lx * TILE_SIZE) as f32 + tile_size * 0.25 + if side == 'h' { dither * sign } else { 0. },
+                (ly * TILE_SIZE) as f32 + tile_size * 0.25 + if side == 'v' { dither * sign } else { 0. },
+            );
+
+            let dst = (lx - x).abs().hypot((ly - y).abs());
+            return Some(dst + if side == 'c' || side == 'f' { dither } else { 0.0 });
+        }
+        None
     }
 }
 
@@ -467,6 +504,7 @@ fn floorcast(
     floor_texture: &Texture,
     side: char,
     map: &Map,
+    rng: &mut rand::rngs::SmallRng,
 ) -> Result<(), String> {
     let projection_center = projection_plane.1 / 2;
     let tile_size = TILE_SIZE as f32;
@@ -490,29 +528,39 @@ fn floorcast(
         let tex_x = ((ends.0 / tile_size).fract() * floor_texture.width() as f32) as i32;
         let tex_y = ((ends.1 / tile_size).fract() * floor_texture.height() as f32) as i32;
 
-        let mut light_mult =
-            1.0 / map.distance_to_light((ends.0 / tile_size) as i32, (ends.1 / tile_size) as i32);
-
+        let distance_to_light = map.distance_to_light(ends.0, ends.1, Some(rng), side);
+        let light_mult = light_intensity(distance_to_light);
         if light_mult < 0.08 {
-            light_mult = 0.;
+            // light_mult = 0.;
         }
 
         let mult = 1. / distance_to_point + light_mult;
 
         // So dark we don't need to copy anything
         if mult < 0.005 {
-            continue;
+            // continue;
         }
 
-        floor_texture.copy_to_ex(
-            tex_x,
-            tex_y,
-            x,
-            row,
-            pixels,
-            Some(&[mult, mult, mult]),
-        );
+        floor_texture.copy_to_ex(tex_x, tex_y, x, row, pixels, Some(&[mult, mult, mult]));
     }
 
     Ok(())
+}
+
+fn light_intensity(dtl: Option<f32>) -> f32 {
+    let intensity = if let Some(dtl) = dtl {
+        let rounded = util::round_n(dtl, (TILE_SIZE / 2) as f32);
+        (1.0 / rounded.powf(if dtl < 60. {
+            0.95
+        } else if dtl > 100. {
+            2.
+        } else {
+            1.15
+        }))
+        .sqrt()
+    } else {
+        0.0
+    };
+
+    intensity.min(1.15)
 }

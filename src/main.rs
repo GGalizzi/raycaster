@@ -14,8 +14,8 @@ use base_plugin::BasePlugin;
 use game::Game;
 use game_plugin::{GamePlugin, Player, Position};
 use raycaster::raycast;
-use texture::Texture;
 use raycaster::Map;
+use texture::Texture;
 
 pub const TILE_SIZE: i32 = 12;
 
