@@ -334,6 +334,7 @@ struct Map {
     width: i32,
     height: i32,
     lights: Vec<(i32, i32)>,
+    light_data: Vec<Option<f32>>,
 }
 
 impl Map {
@@ -367,12 +368,14 @@ impl Map {
             width: 18,
             height: 18,
             lights: Vec::new(),
+            light_data: Vec::new(),
         };
 
         map.bake_lights();
         map
     }
 
+    // Finds the closest light source for every tile on map
     fn bake_lights(&mut self) {
         self.lights.clear();
         for (i, t) in self.tiles.iter().enumerate() {
@@ -381,9 +384,20 @@ impl Map {
                     .push((i as i32 % self.width, i as i32 / self.width))
             }
         }
+
+        let mut light_data = vec![None; (self.width * self.height) as usize];
+        for x in 0..self.width {
+            for y in 0..self.height {
+                let dst = self.prepare_light_data(x, y);
+                light_data[(self.width * y + x) as usize] =
+                    if dst != f32::MAX { Some(dst) } else { None };
+            }
+        }
+
+        self.light_data = light_data;
     }
 
-    pub fn is_blocking_at(&self, (x, y): (i32, i32)) -> bool {
+    fn is_blocking_at(&self, (x, y): (i32, i32)) -> bool {
         let given_idx = (self.width * y + x) as usize;
         if y > self.height || x > self.width || given_idx >= self.tiles.len() {
             return false;
@@ -391,7 +405,7 @@ impl Map {
         self.tiles[given_idx] == '#'
     }
 
-    pub fn distance_to_light(&self, x: i32, y: i32) -> f32 {
+    fn prepare_light_data(&self, x: i32, y: i32) -> f32 {
         let mut closest = None;
         for (lx, ly) in &self.lights {
             let x = ((x - lx) as f32).abs();
@@ -412,6 +426,14 @@ impl Map {
         } else {
             f32::MAX
         }
+    }
+
+    pub fn distance_to_light(&self, x: i32, y: i32) -> f32 {
+        let idx = (self.width * y + x) as usize;
+        if idx > self.light_data.len() {
+            return f32::MAX;
+        }
+        self.light_data[idx].unwrap_or(f32::MAX)
     }
 }
 
