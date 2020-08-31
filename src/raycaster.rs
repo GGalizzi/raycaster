@@ -358,10 +358,10 @@ impl Map {
                 #..............###
                 #........#.....###
                 #........#.....###
-                #...######.....###
-                #...#l.........###
-                #...#.....#....###
-                #...#.....#....###
+                #...########...###
+                #...##.........###
+                #......l..#....###
+                #...##....#....###
                 #...####..#....###
                 #.........#....###
                 ##################
@@ -386,24 +386,20 @@ impl Map {
         self.lights.clear();
         for (i, t) in self.tiles.iter().enumerate() {
             if *t == 'l' {
+                let x = (i as i32 % self.width) * TILE_SIZE;
+                let y = (i as i32 / self.width) * TILE_SIZE;
                 self.lights
-                    .push((i as i32 % self.width, i as i32 / self.width))
+                    .push((x, y));
             }
         }
 
-        let mut light_data = vec![None; (self.width * self.height) as usize];
+        let total_width = self.width * TILE_SIZE;
+        let mut light_data = vec![None; (self.width * self.height * TILE_SIZE * TILE_SIZE) as usize];
 
-        if self.tiles.len() != light_data.len() {
-            panic!(format!(
-                "Map size not the same as data size. tiles {:?}, data {:?}",
-                self.tiles.len(),
-                self.light_data.len()
-            ));
-        }
-        for x in 0..self.width {
-            for y in 0..self.height {
+        for x in 0..total_width {
+            for y in 0..self.height * TILE_SIZE {
                 let light_pos = self.prepare_light_data(x, y);
-                light_data[(self.width * y + x) as usize] = light_pos;
+                light_data[(total_width * y + x) as usize] = light_pos;
             }
         }
 
@@ -423,7 +419,10 @@ impl Map {
         for (lx, ly) in &self.lights {
             let dst = if let Some(_) =
                 crate::util::raycast((x as i32, y as i32), (*lx as i32, *ly as i32), |point| {
-                    self.is_blocking_at(point)
+                    let x_diff = (point.0 - x).abs();
+                    let y_diff = (point.1 - y).abs();
+                    if x_diff < 2 && y_diff < 2 { return false; }
+                    self.is_blocking_at((point.0 / TILE_SIZE, point.1 / TILE_SIZE))
                 }) {
                 f32::MAX
             } else {
@@ -452,9 +451,9 @@ impl Map {
     }
 
     pub fn distance_to_light(&self, x: f32, y: f32, rng: Option<&mut rand::rngs::SmallRng>, side: char) -> Option<f32> {
-        let gx = x.floor() as i32 / TILE_SIZE;
-        let gy = y.floor() as i32 / TILE_SIZE;
-        let idx = (self.width * gy + gx) as usize;
+        let gx = x.round() as i32;
+        let gy = y.round() as i32;
+        let idx = (self.width * TILE_SIZE * gy + gx) as usize;
 
         if idx >= self.light_data.len() {
             return None;
@@ -480,8 +479,8 @@ impl Map {
             } as f32;
 
             let (lx, ly) = (
-                (lx * TILE_SIZE) as f32 + tile_size * 0.25 + if side == 'h' { dither * sign } else { 0. },
-                (ly * TILE_SIZE) as f32 + tile_size * 0.25 + if side == 'v' { dither * sign } else { 0. },
+                lx as f32 + if side == 'h' { dither * sign } else { 0. },
+                ly as f32 + if side == 'v' { dither * sign } else { 0. },
             );
 
             let dst = (lx - x).abs().hypot((ly - y).abs());
